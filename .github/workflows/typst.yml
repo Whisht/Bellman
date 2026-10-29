@@ -1,0 +1,34 @@
+name: Build PDF
+
+on:
+  push:
+    branches: [main]
+    paths: [main.typ, .github/workflows/typst.yml]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install CJK fonts
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y fonts-noto-cjk fonts-liberation fonts-dejavu-core
+
+      - name: Set up Typst
+        uses: typst-community/setup-typst@v4
+
+      - name: Compile main.typ
+        run: typst compile main.typ bellman-notes.pdf
+
+      - name: Upload PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: bellman-notes
+          path: bellman-notes.pdf
