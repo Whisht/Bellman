@@ -10,14 +10,17 @@
 #let serif-font = (
   (name: "New Computer Modern", covers: "latin-in-cjk"),
   "Source Han Serif SC",
+  "Noto Serif CJK SC",
   "Songti SC",
 )
 #let sans-font = (
   (name: "Helvetica Neue", covers: "latin-in-cjk"),
+  (name: "Liberation Sans", covers: "latin-in-cjk"),
   "Source Han Sans SC",
+  "Noto Sans CJK SC",
   "PingFang SC",
 )
-#let mono-font = ("Menlo", "Source Han Sans SC", "PingFang SC")
+#let mono-font = ("Menlo", "DejaVu Sans Mono", "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC")
 
 #let doc-title = "强化学习笔记"
 #let doc-subtitle = "贝尔曼期望方程与贝尔曼最优方程的完整推导"
@@ -54,7 +57,7 @@
 #set par(justify: true, leading: 0.85em, spacing: 1em, first-line-indent: (amount: 2em, all: false))
 #set strong(delta: 200)
 #show strong: set text(fill: accent.darken(15%))
-#show emph: set text(font: ((name: "New Computer Modern", covers: "latin-in-cjk"), "Kaiti SC"))
+#show emph: set text(font: ((name: "New Computer Modern", covers: "latin-in-cjk"), "Kaiti SC", "Noto Serif CJK SC"))
 
 // 列表
 #set list(marker: ([•], [‣], [–]), indent: 0.6em, body-indent: 0.6em, spacing: 0.9em)
@@ -65,7 +68,7 @@
 // 公式
 #set math.equation(supplement: [式])
 #show math.equation.where(block: true): set block(above: 1.1em, below: 1.1em)
-#show math.equation: set text(font: ("New Computer Modern Math", "Source Han Serif SC", "Songti SC"))
+#show math.equation: set text(font: ("New Computer Modern Math", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC"))
 // 推导中重点结论的框
 #let eqbox(body) = box(
   stroke: 0.9pt + accent,
