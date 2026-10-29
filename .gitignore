@@ -1,0 +1,6 @@
+*.mhtml
+*.json
+typst
+Guidelines.md
+bellman-*.md
+.DS_Store
