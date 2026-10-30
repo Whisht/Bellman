@@ -537,7 +537,7 @@ $
 <sec-markov-lemma3>
 - #strong[P14（马尔可夫性，Markov Property）]：MDP 的定义性假设是“给定当前状态与动作后，未来与历史条件独立”，即下一时刻状态与奖励的分布仅取决于当前状态 $S_t$ 和动作 $A_t$，而与更早的历史轨迹无关：
   $
-    Pr(S_(t + 1) = s', R_(t + 1) = r divides S_t, A_t, S_(t - 1), dots.h, S_0, A_0) = #mhlb($Pr(S_(t + 1) = s', R_(t + 1) = r divides S_t, A_t)$) .
+    Pr(S_(t + 1) = s', R_(t + 1) = r divides S_t, A_t, S_(t - 1), A_(t - 1), dots.h, S_0, A_0) = #mhlb($Pr(S_(t + 1) = s', R_(t + 1) = r divides S_t, A_t)$) .
   $ <eq-p14-markov>
   由此可知，在固定平稳策略 $pi$ 下，一旦给定了下一时刻状态 $S_(t + 1) = s'$，从时刻 $t + 1$ 开始的未来轨迹（包括未来回报 $G_(t + 1)$）就只由 $s'$ 与策略 $pi$ 决定，与时刻 $t$ 的状态 $S_t$、动作 $A_t$ 及即时奖励 $R_(t + 1)$ 条件独立，即：
   $ #mhlb($G_(t + 1) perp (S_t, A_t, R_(t + 1)) divides S_(t + 1)$) . $ <eq-markov-indep>
@@ -569,7 +569,7 @@ $
 <sec-bellman-exp-cond>
 本章从价值函数的定义出发，结合#strong[回报一步递推关系]（#link(<prop-1.1>)[命题 1.1]）、#strong[条件全期望公式]（#link(<lem-2>)[引理 2]）与#strong[马尔可夫性]（#link(<lem-3>)[引理 3] 结论 B），推导四条条件期望形式的贝尔曼期望方程（汇总见 @tab-bellman-exp-cond）。
 
-为体现两层随机性的内在生成逻辑，本章与后续章节统一按照#strong[“先单步桥接（$v_pi arrow.r q_pi$、$q_pi arrow.r v_pi$），后复合自递推（$v_pi arrow.r v_pi$、$q_pi arrow.r q_pi$）”]#strong[]的顺序展开。
+为体现两层随机性的内在生成逻辑，本章与后续章节统一按照#strong[“先单步桥接（$v_pi arrow.r q_pi$、$q_pi arrow.r v_pi$），后复合自递推（$v_pi arrow.r v_pi$、$q_pi arrow.r q_pi$）”]的顺序展开。
 
 #figure(
   caption: [贝尔曼期望方程（条件期望形式）的四类递推关系汇总（各式对所有 $s in cal(S)$ 或 $(s, a) in cal(S) times cal(A)$ 成立）],
@@ -577,13 +577,13 @@ $
     columns: (auto, 1fr),
     table.header([递推关系], [贝尔曼期望方程（条件期望形式）]),
     table.hline(),
-    [$v_pi arrow.r q_pi$ \\ #text(size: 8.2pt, fill: muted)[策略层单步转换]],
+    [$v_pi arrow.r q_pi$ \ #text(size: 8.2pt, fill: muted)[策略层单步转换]],
     [$ v_pi (s) = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] $],
-    [$q_pi arrow.r v_pi$ \\ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
+    [$q_pi arrow.r v_pi$ \ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
     [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $],
-    [$v_pi arrow.r v_pi$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$v_pi arrow.r v_pi$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
     [$ v_pi (s) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
-    [$q_pi arrow.r q_pi$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$q_pi arrow.r q_pi$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
     [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] thin divides thin S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-exp-cond>
@@ -969,13 +969,13 @@ $ <eq-opt-def>
     columns: (auto, 1fr),
     table.header([递推关系], [贝尔曼最优方程（条件期望形式）]),
     table.hline(),
-    [$v_star arrow.r q_star$ \\ #text(size: 8.2pt, fill: muted)[策略层单步贪心]],
+    [$v_star arrow.r q_star$ \ #text(size: 8.2pt, fill: muted)[策略层单步贪心]],
     [$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) $],
-    [$q_star arrow.r v_star$ \\ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
+    [$q_star arrow.r v_star$ \ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
     [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
-    [$v_star arrow.r v_star$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$v_star arrow.r v_star$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
     [$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
-    [$q_star arrow.r q_star$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$q_star arrow.r q_star$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
     [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-opt-cond>
@@ -1091,7 +1091,7 @@ $ <eq-opt-cond-qq>
 - #strong[定理 5.5（$v_star arrow.r q_star$ 的展开形式）] <thm-5.5>：已在#link(<thm-5.1>)[定理 5.1] 中直接导出：
   $ #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) quad "for all " s in cal(S) $]) $ <eq-opt-explicit-vq>
 
-- #strong[定理 5.6（$q_star arrow.r v_star$ 的展开形式）] <thm-5.6>：由 $q_star (s, a) eq.dot max_pi q_pi (s, a)$ 与#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv），因 $p(s' divides s, a) gt.eq 0$ 与策略无关，将 $max_pi$ 移入求和号内可得：
+- #strong[定理 5.6（$q_star arrow.r v_star$ 的展开形式）] <thm-5.6>：由 $q_star (s, a) eq.dot max_pi q_pi (s, a)$ 与#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv），因 $p(s' divides s, a) gt.eq 0$ 与策略无关，并借助#link(<fact-f2>)[事实 F2]（同一最优策略 $pi_star$ 在所有后继状态上同时最优），将 $max_pi$ 移入求和号内可得：
   $
     #eqbox([$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$) quad "for all " (s, a) in cal(S) times cal(A) $])
   $ <eq-opt-explicit-qv>
