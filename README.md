@@ -4,7 +4,7 @@
 
 从概率论基础与马尔可夫决策过程（MDP）的基本定义出发，系统推导强化学习中的两组核心方程：**贝尔曼期望方程**与**贝尔曼最优方程**。全文使用 [Typst](https://typst.app/) 排版，共 22 页。
 
-📄 **成品 PDF**：[`bellman-notes.pdf`](./bellman-notes.pdf)　｜　📝 **源文件**：[`main.typ`](./main.typ)
+📄 **成品 PDF**：见 [Releases](../../releases)（由 GitHub Actions 构建）　｜　📝 **源文件**：[`main.typ`](./main.typ)
 
 ## 内容概览
 
@@ -48,4 +48,4 @@ typst watch main.typ bellman-notes.pdf
 | 文件 | 说明 |
 | --- | --- |
 | `main.typ` | 笔记源文件，样式定义在文件开头 |
-| `bellman-notes.pdf` | 编译产物 |
+| `bellman-notes.pdf` | 本地编译产物（不入库，成品以 Releases 为准） |
