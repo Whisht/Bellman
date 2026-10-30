@@ -2,6 +2,7 @@
 //  强化学习笔记：贝尔曼期望方程与贝尔曼最优方程的完整推导
 // ============================================================
 #import "@preview/fletcher:0.5.8" as fletcher: diagram, node, edge
+#import "@preview/mannot:0.3.0": markhl
 
 // ---------- 配色与字体 ----------
 #let accent = rgb("#1f4e79")
@@ -115,31 +116,18 @@
   )
 }
 
-// 公式内部重点项高亮宏：琥珀色（策略算子/核心变换）、浅蓝色（条件加细/马尔可夫化简）、浅绿色（后继价值递推项）
-#let mhl(body) = box(
-  fill: hl-amber-fill,
-  stroke: 0.45pt + hl-amber-stroke,
-  inset: (x: 2.5pt, y: 0pt),
-  outset: (y: 3pt),
-  radius: 2pt,
-  $display(#body)$,
-)
-#let mhlb(body) = box(
-  fill: hl-blue-fill,
-  stroke: 0.45pt + hl-blue-stroke,
-  inset: (x: 2.5pt, y: 0pt),
-  outset: (y: 3pt),
-  radius: 2pt,
-  $display(#body)$,
-)
-#let mhlg(body) = box(
-  fill: hl-green-fill,
-  stroke: 0.45pt + hl-green-stroke,
-  inset: (x: 2.5pt, y: 0pt),
-  outset: (y: 3pt),
-  radius: 2pt,
-  $display(#body)$,
-)
+// 公式内部重点项高亮宏（基于 mannot.markhl，按公式真实包围盒绘制）：
+// 琥珀色（策略算子/核心变换）、浅蓝色（条件加细/马尔可夫化简）、浅绿色（后继价值递推项）
+#let _unwrap(body) = if type(body) == content and body.func() == math.equation { body.body } else { body }
+#let _mk(fill, stroke) = body => {
+  let b = _unwrap(body)
+  {
+    markhl(b, color: stroke, fill: fill, stroke: 0.5pt + stroke, radius: 2pt, outset: (x: 0.12em, y: 0.22em))
+  }
+}
+#let mhl = _mk(hl-amber-fill, hl-amber-stroke)
+#let mhlb = _mk(hl-blue-fill, hl-blue-stroke)
+#let mhlg = _mk(hl-green-fill, hl-green-stroke)
 
 // ---------- 标题 ----------
 #set heading(numbering: (..n) => if n.pos().len() <= 2 { numbering("1.1", ..n) })
@@ -203,7 +191,12 @@
 
 #show figure: set math.equation(numbering: none)
 #show figure: set block(above: 1.2em, below: 1.2em)
-#show figure.where(kind: table): set block(breakable: true)
+#show figure.where(kind: table): set block(breakable: false)
+#show figure.where(kind: table): it => {
+  show math.equation.where(block: true): set block(above: 0.35em, below: 0.35em)
+  show math.equation.where(block: true): set align(left)
+  it
+}
 #show figure.where(kind: table): set figure(supplement: [表])
 #show figure.where(kind: table): set figure.caption(position: top)
 #show figure.where(kind: image): set figure(supplement: [图])
@@ -290,22 +283,24 @@
 
 在强化学习经典文献（如 Sutton & Barto《强化学习：导论》）中，贝尔曼方程通常以两种等价的数学形式出现：一是以条件期望表征的#strong[紧凑形式]（基于全期望公式与塔性质），二是以状态转移概率与策略分布显式求和表征的#strong[展开形式]（基于全概率公式与链式法则）。本笔记严格区分并打通这两条推导路径，按“先单步桥接（$v arrow.r q$、$q arrow.r v$）、后复合自递推（$v arrow.r v$、$q arrow.r q$）”的统一逻辑组织全文，核心对照见 @tab-overview。
 
-为突出公式中的核心结构，全文采用三色标记高亮关键数学项：#mhl($pi(a divides s) \/ max_a$)（琥珀色）标记#strong[策略层算子或核心变换]，#mhlb($S_(t+1) \/ p(g divides s')$)（浅蓝色）标记#strong[新引入的条件变量或马尔可夫条件独立化简项]，#mhlg($v_pi (S_(t+1)) \/ q_star (s', a')$)（浅绿色）标记#strong[后继时刻的价值递推项]。
+为突出公式中的核心结构，全文采用三色标记高亮关键数学项：$mhl(pi(a divides s) \/ max_a)$（琥珀色）标记#strong[策略层算子或核心变换]，$mhlb(S_(t+1) \/ p(g divides s'))$（浅蓝色）标记#strong[新引入的条件变量或马尔可夫条件独立化简项]，$mhlg(v_pi (S_(t+1)) \/ q_star (s', a'))$（浅绿色）标记#strong[后继时刻的价值递推项]。
 
 #figure(
   caption: [贝尔曼期望方程与贝尔曼最优方程的总体对照（以状态价值自递推 $v arrow.r v$ 为例）],
   table(
-    columns: 4,
-    table.header([方程类别], [条件期望形式], [显式展开形式], [适用对象与性质]),
+    columns: (auto, auto, 1fr),
+    table.header([方程类别与性质], [形式], [$v arrow.r v$ 方程]),
     table.hline(),
-    [贝尔曼期望方程],
-    [$v_pi (s) = bb(E)_pi [R_(t + 1) + gamma #mhlg($v_pi (S_(t + 1))$) divides S_t = s]$],
-    [$v_pi (s) = sum_a #mhl($pi(a divides s)$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_pi (s')$)]$],
-    [任意固定策略 $pi$；关于价值函数的#strong[线性]方程组],
-    [贝尔曼最优方程],
-    [$v_star (s) = #mhl($max_a$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a]$],
-    [$v_star (s) = #mhl($max_a$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_star (s')$)]$],
-    [最优策略 $pi_star$；关于价值函数的#strong[非线性]方程组],
+    table.cell(rowspan: 2)[#strong[贝尔曼期望方程] \ 任意固定策略 $pi$ \ 价值函数的#strong[线性]方程组],
+    [条件期望形式],
+    [$ v_pi (s) = bb(E)_pi [R_(t + 1) + gamma #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
+    [显式展开形式],
+    [$ v_pi (s) = sum_a #mhl($pi(a divides s)$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_pi (s')$)] $],
+    table.cell(rowspan: 2)[#strong[贝尔曼最优方程] \ 最优策略 $pi_star$ \ 价值函数的#strong[非线性]方程组],
+    [条件期望形式],
+    [$ v_star (s) = #mhl($max_a$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [显式展开形式],
+    [$ v_star (s) = #mhl($max_a$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_star (s')$)] $],
   ),
 ) <tab-overview>
 
@@ -577,23 +572,19 @@ $
 为体现两层随机性的内在生成逻辑，本章与后续章节统一按照#strong[“先单步桥接（$v_pi arrow.r q_pi$、$q_pi arrow.r v_pi$），后复合自递推（$v_pi arrow.r v_pi$、$q_pi arrow.r q_pi$）”]#strong[]的顺序展开。
 
 #figure(
-  caption: [贝尔曼期望方程（条件期望形式）的四类递推关系汇总],
+  caption: [贝尔曼期望方程（条件期望形式）的四类递推关系汇总（各式对所有 $s in cal(S)$ 或 $(s, a) in cal(S) times cal(A)$ 成立）],
   table(
-    columns: 3,
-    table.header([递推关系], [算子层级], [贝尔曼期望方程（条件期望形式）]),
+    columns: (auto, 1fr),
+    table.header([递推关系], [贝尔曼期望方程（条件期望形式）]),
     table.hline(),
-    [$v_pi arrow.r q_pi$],
-    [策略层单步转换],
-    [$v_pi (s) = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)]$],
-    [$q_pi arrow.r v_pi$],
-    [环境层单步转换],
-    [$q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a]$],
-    [$v_pi arrow.r v_pi$],
-    [两层复合自递推],
-    [$v_pi (s) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s]$],
-    [$q_pi arrow.r q_pi$],
-    [两层复合自递推],
-    [$q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] thin divides thin S_t = s, A_t = a]$],
+    [$v_pi arrow.r q_pi$ \\ #text(size: 8.2pt, fill: muted)[策略层单步转换]],
+    [$ v_pi (s) = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] $],
+    [$q_pi arrow.r v_pi$ \\ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
+    [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$v_pi arrow.r v_pi$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$ v_pi (s) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
+    [$q_pi arrow.r q_pi$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] thin divides thin S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-exp-cond>
 
@@ -720,19 +711,19 @@ $ <eq-bellman-exp-qq-compact>
 本章将#link(<sec-bellman-exp-cond>)[第 3 章]的四条条件期望方程展开为关于策略分布 $pi(a divides s)$ 与环境转移概率 $p(s', r divides s, a)$ 的#strong[显式求和形式]（汇总见 @tab-bellman-exp-explicit）。
 
 #figure(
-  caption: [贝尔曼期望方程（显式展开形式）的四类递推关系汇总],
+  caption: [贝尔曼期望方程（显式展开形式）的四类递推关系汇总（各式对所有 $s in cal(S)$ 或 $(s, a) in cal(S) times cal(A)$ 成立）],
   table(
-    columns: 2,
+    columns: (auto, 1fr),
     table.header([递推关系], [贝尔曼期望方程（显式展开形式）]),
     table.hline(),
     [$v_pi arrow.r q_pi$],
-    [$v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) thin #mhlg($q_pi (s, a)$) quad "for all " s in cal(S)$],
+    [$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) thin #mhlg($q_pi (s, a)$) $],
     [$q_pi arrow.r v_pi$],
-    [$q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$) quad "for all " (s, a) in cal(S) times cal(A)$],
+    [$ q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$) $],
     [$v_pi arrow.r v_pi$],
-    [$v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$)] quad "for all " s in cal(S)$],
+    [$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$)] $],
     [$q_pi arrow.r q_pi$],
-    [$q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($q_pi (s', a')$) quad "for all " (s, a) in cal(S) times cal(A)$],
+    [$ q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($q_pi (s', a')$) $],
   ),
 ) <tab-bellman-exp-explicit>
 
@@ -857,23 +848,31 @@ $ <eq-exp-explicit-qq>
   $ <eq-variant-expected-reward>
 
 #figure(
-  caption: [四条贝尔曼期望方程在联合分布合并形式与期望奖励函数形式下的完整对照],
+  caption: [四条贝尔曼期望方程在联合分布合并形式（Sutton & Barto）与期望奖励函数形式下的完整对照],
   table(
-    columns: 3,
-    table.header([递推关系], [联合分布合并形式（Sutton & Barto）], [期望奖励函数形式]),
+    columns: (auto, auto, 1fr),
+    table.header([递推关系], [形式], [公式]),
     table.hline(),
-    [$v_pi arrow.r q_pi$],
-    [$v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a)$],
-    [$v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a)$],
-    [$q_pi arrow.r v_pi$],
-    [$q_pi (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_pi (s')]$],
-    [$q_pi (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_pi (s')$],
-    [$v_pi arrow.r v_pi$],
-    [$v_pi (s) = sum_(a in cal(A)) pi(a divides s) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_pi (s')]$],
-    [$v_pi (s) = sum_(a in cal(A)) pi(a divides s) [r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_pi (s')]$],
-    [$q_pi arrow.r q_pi$],
-    [$q_pi (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma sum_(a' in cal(A)) pi(a' divides s') q_pi (s', a')]$],
-    [$q_pi (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) pi(a' divides s') q_pi (s', a')$],
+    table.cell(rowspan: 2)[$v_pi arrow.r q_pi$],
+    [联合分布合并形式],
+    [$ v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a) $],
+    [期望奖励函数形式],
+    [$ v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a) $],
+    table.cell(rowspan: 2)[$q_pi arrow.r v_pi$],
+    [联合分布合并形式],
+    [$ q_pi (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_pi (s')] $],
+    [期望奖励函数形式],
+    [$ q_pi (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_pi (s') $],
+    table.cell(rowspan: 2)[$v_pi arrow.r v_pi$],
+    [联合分布合并形式],
+    [$ v_pi (s) = sum_(a in cal(A)) pi(a divides s) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_pi (s')] $],
+    [期望奖励函数形式],
+    [$ v_pi (s) = sum_(a in cal(A)) pi(a divides s) [r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_pi (s')] $],
+    table.cell(rowspan: 2)[$q_pi arrow.r q_pi$],
+    [联合分布合并形式],
+    [$ q_pi (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma sum_(a' in cal(A)) pi(a' divides s') q_pi (s', a')] $],
+    [期望奖励函数形式],
+    [$ q_pi (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) pi(a' divides s') q_pi (s', a') $],
   ),
 ) <tab-bellman-exp-variants>
 
@@ -957,23 +956,19 @@ $ <eq-opt-def>
 与#link(<sec-bellman-exp-cond>)[第 3 章]的四条贝尔曼期望方程（@tab-bellman-exp-cond）一一对应，最优价值函数 $v_star$ 与 $q_star$ 之间同样满足四条条件期望形式的贝尔曼最优方程（见 @tab-bellman-opt-cond），其回溯树结构与期望方程的对比见 @fig-expectation-vs-optimality。
 
 #figure(
-  caption: [贝尔曼最优方程（条件期望形式）的四类递推关系汇总],
+  caption: [贝尔曼最优方程（条件期望形式）的四类递推关系汇总（各式对所有 $s in cal(S)$ 或 $(s, a) in cal(S) times cal(A)$ 成立）],
   table(
-    columns: 3,
-    table.header([递推关系], [算子层级], [贝尔曼最优方程（条件期望形式）]),
+    columns: (auto, 1fr),
+    table.header([递推关系], [贝尔曼最优方程（条件期望形式）]),
     table.hline(),
-    [$v_star arrow.r q_star$],
-    [策略层单步贪心],
-    [$v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) quad "for all " s in cal(S)$],
-    [$q_star arrow.r v_star$],
-    [环境层单步转换],
-    [$q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A)$],
-    [$v_star arrow.r v_star$],
-    [两层复合自递推],
-    [$v_star (s) = #mhl($max_(a in cal(A))$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " s in cal(S)$],
-    [$q_star arrow.r q_star$],
-    [两层复合自递推],
-    [$q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A)$],
+    [$v_star arrow.r q_star$ \\ #text(size: 8.2pt, fill: muted)[策略层单步贪心]],
+    [$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) $],
+    [$q_star arrow.r v_star$ \\ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
+    [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$v_star arrow.r v_star$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$q_star arrow.r q_star$ \\ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
+    [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-opt-cond>
 
@@ -1069,19 +1064,19 @@ $ <eq-opt-cond-qq>
 将 5.2 节四条条件期望最优方程中的环境转移期望按概率分布 $p(r divides s, a)$ 与 $p(s' divides s, a)$ 展开，即可直接导出四条显式展开形式的贝尔曼最优方程（汇总见 @tab-bellman-opt-explicit）。
 
 #figure(
-  caption: [贝尔曼最优方程（显式展开形式）的四类递推关系汇总],
+  caption: [贝尔曼最优方程（显式展开形式）的四类递推关系汇总（各式对所有 $s in cal(S)$ 或 $(s, a) in cal(S) times cal(A)$ 成立）],
   table(
-    columns: 2,
+    columns: (auto, 1fr),
     table.header([递推关系], [贝尔曼最优方程（显式展开形式）]),
     table.hline(),
     [$v_star arrow.r q_star$],
-    [$v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) quad "for all " s in cal(S)$],
+    [$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) $],
     [$q_star arrow.r v_star$],
-    [$q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$) quad "for all " (s, a) in cal(S) times cal(A)$],
+    [$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$) $],
     [$v_star arrow.r v_star$],
-    [$v_star (s) = #mhl($max_(a in cal(A))$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$)] quad "for all " s in cal(S)$],
+    [$ v_star (s) = #mhl($max_(a in cal(A))$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$)] $],
     [$q_star arrow.r q_star$],
-    [$q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhl($max_(a' in cal(A))$) #mhlg($q_star (s', a')$) quad "for all " (s, a) in cal(S) times cal(A)$],
+    [$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhl($max_(a' in cal(A))$) #mhlg($q_star (s', a')$) $],
   ),
 ) <tab-bellman-opt-explicit>
 
@@ -1106,23 +1101,31 @@ $ <eq-opt-cond-qq>
 对比#link(<sec-bellman-exp-explicit>)[第 4 章]的 @tab-bellman-exp-explicit 与本章的 @tab-bellman-opt-explicit 可见，贝尔曼最优方程与贝尔曼期望方程共享完全相同的环境层转移结构，二者的唯一区别是将策略层的加权求和算子 $#mhl($sum_(a in cal(A)) pi(a divides s) (dot.op)$)$ 替换为贪心最大化算子 $#mhl($max_(a in cal(A)) (dot.op)$)$。其联合分布合并形式与期望奖励函数形式对照见 @tab-bellman-opt-variants。
 
 #figure(
-  caption: [四条贝尔曼最优方程在联合分布合并形式与期望奖励函数形式下的完整对照],
+  caption: [四条贝尔曼最优方程在联合分布合并形式（Sutton & Barto）与期望奖励函数形式下的完整对照],
   table(
-    columns: 3,
-    table.header([递推关系], [联合分布合并形式（Sutton & Barto）], [期望奖励函数形式]),
+    columns: (auto, auto, 1fr),
+    table.header([递推关系], [形式], [公式]),
     table.hline(),
-    [$v_star arrow.r q_star$],
-    [$v_star (s) = max_(a in cal(A)) q_star (s, a)$],
-    [$v_star (s) = max_(a in cal(A)) q_star (s, a)$],
-    [$q_star arrow.r v_star$],
-    [$q_star (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_star (s')]$],
-    [$q_star (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_star (s')$],
-    [$v_star arrow.r v_star$],
-    [$v_star (s) = max_(a in cal(A)) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_star (s')]$],
-    [$v_star (s) = max_(a in cal(A)) [r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_star (s')]$],
-    [$q_star arrow.r q_star$],
-    [$q_star (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma max_(a' in cal(A)) q_star (s', a')]$],
-    [$q_star (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) max_(a' in cal(A)) q_star (s', a')$],
+    table.cell(rowspan: 2)[$v_star arrow.r q_star$],
+    [联合分布合并形式],
+    [$ v_star (s) = max_(a in cal(A)) q_star (s, a) $],
+    [期望奖励函数形式],
+    [$ v_star (s) = max_(a in cal(A)) q_star (s, a) $],
+    table.cell(rowspan: 2)[$q_star arrow.r v_star$],
+    [联合分布合并形式],
+    [$ q_star (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_star (s')] $],
+    [期望奖励函数形式],
+    [$ q_star (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_star (s') $],
+    table.cell(rowspan: 2)[$v_star arrow.r v_star$],
+    [联合分布合并形式],
+    [$ v_star (s) = max_(a in cal(A)) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma v_star (s')] $],
+    [期望奖励函数形式],
+    [$ v_star (s) = max_(a in cal(A)) [r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) v_star (s')] $],
+    table.cell(rowspan: 2)[$q_star arrow.r q_star$],
+    [联合分布合并形式],
+    [$ q_star (s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma max_(a' in cal(A)) q_star (s', a')] $],
+    [期望奖励函数形式],
+    [$ q_star (s, a) = r(s, a) + gamma sum_(s' in cal(S)) p(s' divides s, a) max_(a' in cal(A)) q_star (s', a') $],
   ),
 ) <tab-bellman-opt-variants>
 
