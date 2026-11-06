@@ -293,12 +293,12 @@
     table.hline(),
     table.cell(rowspan: 2)[#strong[贝尔曼期望方程] \ 任意固定策略 $pi$ \ 价值函数的#strong[线性]方程组],
     [条件期望形式],
-    [$ v_pi (s) = bb(E)_pi [R_(t + 1) + gamma #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
+    [$ v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
     [显式展开形式],
     [$ v_pi (s) = sum_a #mhl($pi(a divides s)$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_pi (s')$)] $],
     table.cell(rowspan: 2)[#strong[贝尔曼最优方程] \ 最优策略 $pi_star$ \ 价值函数的#strong[非线性]方程组],
     [条件期望形式],
-    [$ v_star (s) = #mhl($max_a$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$ v_star (s) = #mhl($max_a$) bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
     [显式展开形式],
     [$ v_star (s) = #mhl($max_a$) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) #mhlg($v_star (s')$)] $],
   ),
@@ -362,7 +362,7 @@
   caption: [有限 MDP 的智能体-环境闭环交互与马尔可夫决策轨迹展开],
 ) <fig-mdp-loop>
 
-#strong[记号约定]：$bb(E)_pi [dot.op]$ 表示智能体遵循策略 $pi$ 时的数学期望；全文所有条件概率均在该前提下书写（在不引起歧义时，常将 $Pr_pi (X = x divides Y = y)$ 简记为 $p(x divides y)$）。
+#strong[记号约定]：期望算子的下标标明该期望#strong[实际求平均的随机变量]（即方括号内出现、且未被条件固定的随机变量），如 $bb(E)_(A_t) [q_pi (s, A_t) divides S_t = s]$ 对动作 $A_t tilde.op pi(dot.op divides s)$ 求平均，$bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s, A_t = a]$ 对环境一步转移 $(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 求平均；这些随机变量的分布均由智能体所遵循的策略 $pi$ 与环境模型 $p$ 共同决定。全文所有条件概率均在该前提下书写（在不引起歧义时，常将 $Pr_pi (X = x divides Y = y)$ 简记为 $p(x divides y)$）。
 
 #strong[随机变量与具体取值的区分]：严谨推导贝尔曼方程的关键在于区分#strong[随机变量]（大写字母，如 $S_t, A_t, R_(t + 1), G_t$）与#strong[具体取值]（小写字母，如 $s, a, r, g$）。由于回报 $G_t$ 是未来奖励序列的线性组合，它本身也是一个随机变量。对于任意离散型随机变量 $X$ 与条件 ${Y = y}$，其条件期望均可写为显式求和：
 
@@ -408,11 +408,11 @@ $
 <sec-value-functions>
 #strong[定义 1.2（状态价值函数）] <def-1.2> 智能体从状态 $s in cal(S)$ 出发，此后遵循策略 $pi$ 所获得的期望回报，称为状态价值函数：
 
-$ v_pi (s) eq.dot bb(E)_pi [#mhlg($G_t$) divides #mhlb($S_t = s$)] . $ <eq-v-def>
+$ v_pi (s) eq.dot bb(E)_(G_t) [#mhlg($G_t$) divides #mhlb($S_t = s$)] . $ <eq-v-def>
 
 #strong[定义 1.3（动作价值函数）] <def-1.3> 智能体在状态 $s in cal(S)$ 下执行动作 $a in cal(A)$，此后遵循策略 $pi$ 所获得的期望回报，称为动作价值函数：
 
-$ q_pi (s, a) eq.dot bb(E)_pi [#mhlg($G_t$) divides #mhlb($S_t = s, thin A_t = a$)] . $ <eq-q-def>
+$ q_pi (s, a) eq.dot bb(E)_(G_t) [#mhlg($G_t$) divides #mhlb($S_t = s, thin A_t = a$)] . $ <eq-q-def>
 
 #strong[说明]：由于环境模型与策略均是平稳的（不随时间 $t$ 变化），@eq-v-def 与 @eq-q-def 的值仅取决于状态 $s$（及动作 $a$），与具体时刻 $t$ 无关。两者的区别仅在于#strong[当前时刻动作 $A_t$ 的随机性是否给定]：$v_pi (s)$ 中第一步动作 $A_t$ 仍需按策略 $pi(dot.op divides s)$ 采样，而 $q_pi (s, a)$ 已将第一步动作固定为 $a$。
 
@@ -529,7 +529,7 @@ $
 
 - #strong[P13（无穷级数与期望的交换）]：对随机变量序列 ${X_k}_(k = 1)^oo$，若级数满足绝对收敛条件 $sum_(k = 1)^oo bb(E) [ abs(X_k) ] < oo$，则期望算子与无穷级数求和可合法交换顺序：
   $ bb(E) [sum_(k = 1)^oo X_k] = sum_(k = 1)^oo bb(E) [X_k] . $ <eq-p13-series-swap>
-  #strong[用途]：当 $|R_k| lt.eq R_max$ 且 $gamma in [0, 1)$ 时，由 @eq-return-bound 知 $sum_(k = 1)^oo gamma^(k - 1) bb(E) [ abs(R_(t + k)) ] lt.eq frac(R_max, 1 - gamma) < oo$。这保证了价值函数 $v_pi (s) = bb(E)_pi [G_t divides S_t = s]$ 的良定义性，且对 $G_t = R_(t + 1) + gamma G_(t + 1)$ 两边取期望后拆分为两项之和是严格成立的。
+  #strong[用途]：当 $|R_k| lt.eq R_max$ 且 $gamma in [0, 1)$ 时，由 @eq-return-bound 知 $sum_(k = 1)^oo gamma^(k - 1) bb(E) [ abs(R_(t + k)) ] lt.eq frac(R_max, 1 - gamma) < oo$。这保证了价值函数 $v_pi (s) = bb(E)_(G_t) [G_t divides S_t = s]$ 的良定义性，且对 $G_t = R_(t + 1) + gamma G_(t + 1)$ 两边取期望后拆分为两项之和是严格成立的。
 
 #divider()
 
@@ -557,8 +557,13 @@ $
 
 - #strong[结论 B（条件期望形式，用于#link(<sec-bellman-exp-cond>)[第 3 章]条件期望推导）]：在条件期望中，给定 $S_(t + 1) = s'$（或随机变量 $S_(t + 1)$）后，历史条件 $(S_t, A_t, R_(t + 1))$ 可直接略去并识别为后继状态价值：
   $
-    #eqbox([$ bb(E)_pi [G_(t + 1) divides #mhlb($S_t, A_t, S_(t + 1)$)] = bb(E)_pi [G_(t + 1) divides #mhlb($S_(t + 1)$)] = #mhlg($v_pi (S_(t + 1))$) $])
+    #eqbox([$ bb(E)_(G_(t + 1)) [G_(t + 1) divides #mhlb($S_t, A_t, S_(t + 1)$)] = bb(E)_(G_(t + 1)) [G_(t + 1) divides #mhlb($S_(t + 1)$)] = #mhlg($v_pi (S_(t + 1))$) $])
   $ <eq-lem-3b>
+
+- #strong[结论 C（含后继动作的条件期望形式，用于#link(<thm-3.4>)[定理 3.4]）]：若进一步给定后继动作 $A_(t + 1)$，由于 $A_(t + 1)$ 仅依据 $pi(dot.op divides S_(t + 1))$ 采样，且此后轨迹只由 $(S_(t + 1), A_(t + 1))$、环境模型 $p$ 与策略 $pi$ 决定（P14），有 $G_(t + 1) perp (S_t, A_t, R_(t + 1)) divides (S_(t + 1), A_(t + 1))$。由 P11 与#link(<def-1.3>)[定义 1.3]（平稳性保证其对时刻 $t + 1$ 同样成立）得：
+  $
+    #eqbox([$ bb(E)_(G_(t + 1)) [G_(t + 1) divides #mhlb($S_t, A_t, S_(t + 1), A_(t + 1)$)] = bb(E)_(G_(t + 1)) [G_(t + 1) divides #mhlb($S_(t + 1), A_(t + 1)$)] = #mhlg($q_pi (S_(t + 1), A_(t + 1))$) $])
+  $ <eq-lem-3c>
 
 #divider()
 
@@ -567,7 +572,7 @@ $
 // ============================================================
 = 贝尔曼期望方程（条件期望形式）
 <sec-bellman-exp-cond>
-本章从价值函数的定义出发，结合#strong[回报一步递推关系]（#link(<prop-1.1>)[命题 1.1]）、#strong[条件全期望公式]（#link(<lem-2>)[引理 2]）与#strong[马尔可夫性]（#link(<lem-3>)[引理 3] 结论 B），推导四条条件期望形式的贝尔曼期望方程（汇总见 @tab-bellman-exp-cond）。
+本章从价值函数的定义出发，结合#strong[回报一步递推关系]（#link(<prop-1.1>)[命题 1.1]）、#strong[条件全期望公式]（#link(<lem-2>)[引理 2]）与#strong[马尔可夫性]（#link(<lem-3>)[引理 3] 结论 B、C），推导四条条件期望形式的贝尔曼期望方程（汇总见 @tab-bellman-exp-cond）。#strong[每条定理均直接从价值函数定义出发证明，不调用本章已证得的其他贝尔曼方程]，以保证各结论相互独立、只依赖#link(<sec-math-prelim>)[第 2 章]的预备知识。
 
 为体现两层随机性的内在生成逻辑，本章与后续章节统一按照#strong[“先单步桥接（$v_pi arrow.r q_pi$、$q_pi arrow.r v_pi$），后复合自递推（$v_pi arrow.r v_pi$、$q_pi arrow.r q_pi$）”]的顺序展开。
 
@@ -580,11 +585,11 @@ $
     [$v_pi arrow.r q_pi$ \ #text(size: 8.2pt, fill: muted)[策略层单步转换]],
     [$ v_pi (s) = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] $],
     [$q_pi arrow.r v_pi$ \ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
-    [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$ q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $],
     [$v_pi arrow.r v_pi$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
-    [$ v_pi (s) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
+    [$ v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $],
     [$q_pi arrow.r q_pi$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
-    [$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] thin divides thin S_t = s, A_t = a] $],
+    [$ q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1), A_(t + 1)) [R_(t + 1) + gamma thin #mhlg($q_pi (S_(t + 1), A_(t + 1))$) divides S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-exp-cond>
 
@@ -595,15 +600,15 @@ $
 #strong[定理 3.1（$v_pi$ 关于 $q_pi$ 的贝尔曼期望方程）] <thm-3.1> 对任意固定策略 $pi$ 与状态 $s in cal(S)$，状态价值等于动作价值在策略分布 $pi(dot.op divides s)$ 下的期望：
 
 $
-  #eqbox([$ v_pi (s) = bb(E)_pi [#mhlg($q_pi (S_t, A_t)$) divides S_t = s] = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] $])
+  #eqbox([$ v_pi (s) = bb(E)_(A_t) [#mhlg($q_pi (S_t, A_t)$) divides S_t = s] = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] $])
 $ <eq-bellman-exp-vq>
 
 #strong[证明]：本式不涉及时间步推进，只需在 $v_pi (s)$ 的定义式（@eq-v-def）中应用#link(<lem-2>)[引理 2]（取 $X = G_t, Y = S_t, Z = A_t$），引入当前动作 $A_t$ 作为内层条件：
 
 $
-  v_pi (s) & eq.dot bb(E)_pi [G_t divides S_t = s] \
-  & = bb(E)_pi [bb(E)_pi [G_t divides S_t = s, #mhlb($A_t$)] thin divides thin S_t = s] quad #[（由#link(<lem-2>)[引理 2] 引入动作条件 $A_t$）] \
-  & = bb(E)_pi [#mhlg($q_pi (s, A_t)$) divides S_t = s] quad #[（由#link(<def-1.3>)[定义 1.3]：$bb(E)_pi [G_t divides S_t = s, A_t = a] = q_pi (s, a)$）] \
+  v_pi (s) & eq.dot bb(E)_(G_t) [G_t divides S_t = s] \
+  & = bb(E)_(A_t) [bb(E)_(G_t) [G_t divides S_t = s, #mhlb($A_t$)] thin divides thin S_t = s] quad #[（由#link(<lem-2>)[引理 2] 引入动作条件 $A_t$）] \
+  & = bb(E)_(A_t) [#mhlg($q_pi (s, A_t)$) divides S_t = s] quad #[（由#link(<def-1.3>)[定义 1.3]：$bb(E)_(G_t) [G_t divides S_t = s, A_t = a] = q_pi (s, a)$）] \
   & = #mhl($bb(E)_(A_t tilde.op pi(dot.op divides s))$) [#mhlg($q_pi (s, A_t)$)] . #h(2em) square.filled.medium
 $
 
@@ -616,19 +621,20 @@ $
 #strong[定理 3.2（$q_pi$ 关于 $v_pi$ 的贝尔曼期望方程）] <thm-3.2> 对任意固定策略 $pi$ 及状态-动作对 $(s, a) in cal(S) times cal(A)$，有：
 
 $
-  #eqbox([$ q_pi (s, a) = bb(E)_pi [#mhl($R_(t + 1)$) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $])
+  #eqbox([$ q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] $])
 $ <eq-bellman-exp-qv>
 
 #strong[证明]：
 + #strong[代入回报递推式并做线性拆分]：由动作价值定义（@eq-q-def）、回报一步递推式（@eq-return-recursion）与#link(<lem-1>)[引理 1]：
   $
-    q_pi (s, a) & eq.dot bb(E)_pi [G_t divides S_t = s, A_t = a] = bb(E)_pi [#mhl($R_(t + 1) + gamma G_(t + 1)$) divides S_t = s, A_t = a] \
-    & = bb(E)_pi [R_(t + 1) divides S_t = s, A_t = a] + gamma thin bb(E)_pi [G_(t + 1) divides S_t = s, A_t = a] .
+    q_pi (s, a) & eq.dot bb(E)_(G_t) [G_t divides S_t = s, A_t = a] = bb(E)_(R_(t + 1), G_(t + 1)) [#mhl($R_(t + 1) + gamma G_(t + 1)$) divides S_t = s, A_t = a] \
+    & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s, A_t = a] + gamma thin bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a] .
   $
 + #strong[引入后继状态 $S_(t + 1)$ 并应用马尔可夫性]：对第二项应用#link(<lem-2>)[引理 2]（取 $Y = (S_t, A_t), Z = S_(t + 1)$）加细条件，再由#link(<lem-3>)[引理 3] 结论 B（@eq-lem-3b）省去已知 $S_(t + 1)$ 下多余的历史条件 $(S_t = s, A_t = a)$：
   $
-    bb(E)_pi [G_(t + 1) divides S_t = s, A_t = a] & = bb(E)_pi [bb(E)_pi [G_(t + 1) divides S_t = s, A_t = a, #mhlb($S_(t + 1)$)] thin divides thin S_t = s, A_t = a] \
-    & = bb(E)_pi [#mhlb($bb(E)_pi [G_(t + 1) divides S_(t + 1)]$) thin divides thin S_t = s, A_t = a] = bb(E)_pi [#mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] .
+    bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a] & = bb(E)_(S_(t + 1)) [bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a, #mhlb($S_(t + 1)$)] thin divides thin S_t = s, A_t = a] \
+    & = bb(E)_(S_(t + 1)) [#mhlb($bb(E)_(G_(t + 1)) [G_(t + 1) divides S_(t + 1)]$) thin divides thin S_t = s, A_t = a] \
+    & = bb(E)_(S_(t + 1)) [#mhlg($v_pi (S_(t + 1))$) divides S_t = s, A_t = a] .
   $
 + #strong[代回合并]：将第 2 步代回第 1 步并由#link(<lem-1>)[引理 1] 合并两项期望，即得 @eq-bellman-exp-qv。$square.filled.medium$
 
@@ -640,18 +646,14 @@ $ <eq-bellman-exp-qv>
 <sec-cond-vv>
 #strong[定理 3.3（状态价值的贝尔曼期望方程）] <thm-3.3> 对任意固定策略 $pi$ 与状态 $s in cal(S)$，状态价值函数满足：
 
-$ #eqbox([$ v_pi (s) = bb(E)_pi [#mhl($R_(t + 1)$) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $]) $ <eq-bellman-exp-vv>
+$ #eqbox([$ v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] $]) $ <eq-bellman-exp-vv>
 
-#strong[证明（方法一：由单步桥接定理复合导出）]：将#link(<thm-3.2>)[定理 3.2]（@eq-bellman-exp-qv）代入#link(<thm-3.1>)[定理 3.1]（@eq-bellman-exp-vq），再应用#link(<lem-2>)[引理 2] 消去内层条件 $A_t$：
+#strong[证明]：从定义 $v_pi (s) eq.dot bb(E)_(G_t) [G_t divides S_t = s]$（@eq-v-def）出发，由#link(<prop-1.1>)[命题 1.1] 与#link(<lem-1>)[引理 1] 拆分为两项后，对第二项应用#link(<lem-2>)[引理 2]（取 $Y = S_t, Z = S_(t + 1)$）引入后继状态，再由#link(<lem-3>)[引理 3] 结论 B（@eq-lem-3b）省去历史条件 $S_t = s$：
 $
-  v_pi (s) & = bb(E)_pi [q_pi (S_t, A_t) divides S_t = s] = bb(E)_pi [bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s, #mhlb($A_t$)] thin divides thin S_t = s] \
-  & = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] . #h(2em) square.filled.medium
-$
-
-#strong[证明（方法二：直接引入 $S_(t + 1)$ 应用塔性质）]：亦可不经过 $q_pi$，直接从 $v_pi (s) eq.dot bb(E)_pi [G_t divides S_t = s]$ 出发，由#link(<prop-1.1>)[命题 1.1] 与#link(<lem-1>)[引理 1] 拆分为两项后，对第二项应用#link(<lem-2>)[引理 2]（取 $Z = S_(t + 1)$）与#link(<lem-3>)[引理 3] 结论 B：
-$
-  v_pi (s) & = bb(E)_pi [R_(t + 1) divides S_t = s] + gamma thin bb(E)_pi [bb(E)_pi [G_(t + 1) divides S_t = s, #mhlb($S_(t + 1)$)] thin divides thin S_t = s] \
-  & = bb(E)_pi [R_(t + 1) divides S_t = s] + gamma thin bb(E)_pi [#mhlg($v_pi (S_(t + 1))$) divides S_t = s] = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] . #h(1.5em) square.filled.medium
+  v_pi (s) & eq.dot bb(E)_(G_t) [G_t divides S_t = s] = bb(E)_(R_(t + 1), G_(t + 1)) [#mhl($R_(t + 1) + gamma G_(t + 1)$) divides S_t = s] \
+  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, #mhlb($S_(t + 1)$)] thin divides thin S_t = s] \
+  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [#mhlg($v_pi (S_(t + 1))$) divides S_t = s] \
+  & = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] . quad #[（由 P1 边缘化与#link(<lem-1>)[引理 1] 合并）] #h(1em) square.filled.medium
 $
 
 #strong[含义]：状态 $s$ 的价值，等于从 $s$ 出发执行一步交互所获得的即时奖励 $R_(t + 1)$ 加上折扣后下一状态价值 $gamma v_pi (S_(t + 1))$ 的条件期望。
@@ -663,15 +665,30 @@ $
 #strong[定理 3.4（动作价值的贝尔曼期望方程）] <thm-3.4> 对任意固定策略 $pi$ 及状态-动作对 $(s, a) in cal(S) times cal(A)$，动作价值函数满足：
 
 $
-  #eqbox([$ q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] thin divides thin S_t = s, A_t = a] $])
+  #eqbox([$ q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1), A_(t + 1)) [#mhl($R_(t + 1)$) + gamma thin #mhlg($q_pi (S_(t + 1), A_(t + 1))$) divides S_t = s, A_t = a] $])
 $ <eq-bellman-exp-qq>
 
-#strong[证明]：对下一时刻状态 $S_(t + 1)$ 应用#link(<thm-3.1>)[定理 3.1]（将时间下标由 $t$ 平移为 $t + 1$），有：
-$ v_pi (S_(t + 1)) = bb(E)_pi [q_pi (S_(t + 1), A_(t + 1)) divides S_(t + 1)] = #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$)] . $
-将其代入#link(<thm-3.2>)[定理 3.2]（@eq-bellman-exp-qv）右端的 $v_pi (S_(t + 1))$，即得 @eq-bellman-exp-qq。若再利用#link(<lem-2>)[引理 2] 将内外两层条件期望合并，也可简写为单层条件期望形式：
+#strong[证明]：
++ #strong[代入回报递推式并做线性拆分]：由动作价值定义（@eq-q-def）、回报一步递推式（@eq-return-recursion）与#link(<lem-1>)[引理 1]：
+  $
+    q_pi (s, a) & eq.dot bb(E)_(G_t) [G_t divides S_t = s, A_t = a] = bb(E)_(R_(t + 1), G_(t + 1)) [#mhl($R_(t + 1) + gamma G_(t + 1)$) divides S_t = s, A_t = a] \
+    & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s, A_t = a] + gamma thin bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a] .
+  $
++ #strong[同时引入后继状态与后继动作 $(S_(t + 1), A_(t + 1))$]：对第二项应用#link(<lem-2>)[引理 2]（取 $Y = (S_t, A_t), Z = (S_(t + 1), A_(t + 1))$）加细条件，再由#link(<lem-3>)[引理 3] 结论 C（@eq-lem-3c）省去历史条件 $(S_t = s, A_t = a)$：
+  $
+    & bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a] \
+    & = bb(E)_(S_(t + 1), A_(t + 1)) [bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a, #mhlb($S_(t + 1), A_(t + 1)$)] thin divides thin S_t = s, A_t = a] \
+    & = bb(E)_(S_(t + 1), A_(t + 1)) [#mhlg($q_pi (S_(t + 1), A_(t + 1))$) divides S_t = s, A_t = a] .
+  $
++ #strong[代回合并]：第 1 项可由 P1 边缘化改写为对 $(R_(t + 1), S_(t + 1), A_(t + 1))$ 联合分布的期望，再由#link(<lem-1>)[引理 1] 与第 2 步合并，即得 @eq-bellman-exp-qq。$square.filled.medium$
+
+#strong[含义]：期望下角标中的 $(R_(t + 1), S_(t + 1))$ 来自环境层转移 $p(dot.op, dot.op divides s, a)$，$A_(t + 1)$ 来自策略层采样 $pi(dot.op divides S_(t + 1))$。若把对 $A_(t + 1)$ 的平均单独写出，@eq-bellman-exp-qq 也可写成嵌套形式 $q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma thin #mhl($bb(E)_(A_(t + 1) tilde.op pi(dot.op divides S_(t + 1)))$) [q_pi (S_(t + 1), A_(t + 1))] divides S_t = s, A_t = a]$（对内层再用一次#link(<lem-2>)[引理 2]，取 $Z = (R_(t + 1), S_(t + 1))$，并由 P14 知 $A_(t + 1) perp (S_t, A_t, R_(t + 1)) divides S_(t + 1)$）。
+
+#strong[注（奖励下标的两种记号约定）]：本文沿用 Sutton & Barto 的约定，称在时刻 $t$ 执行 $A_t$ 后获得的奖励为 $R_(t + 1)$，它与 $S_(t + 1)$ 一起由 $p(s', r divides s, a)$ #strong[联合随机]生成，因此 @eq-bellman-exp-qq 的下角标必须包含 $R_(t + 1)$。另一常见约定（如王树森《深度强化学习》）将同一奖励记为 $R_t$，回报递推写为 $G_t = R_t + gamma G_(t + 1)$，并把奖励视为 $(S_t, A_t, S_(t + 1))$ 的确定函数，此时动作价值的贝尔曼方程写作：
 $
-  q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma thin #mhlg($q_pi (S_(t + 1), A_(t + 1))$) divides S_t = s, A_t = a] . #h(2em) square.filled.medium
-$ <eq-bellman-exp-qq-compact>
+  Q_pi (s_t, a_t) = bb(E)_(S_(t + 1), A_(t + 1)) [R_t + gamma dot.op Q_pi (S_(t + 1), A_(t + 1)) divides S_t = s_t, A_t = a_t] .
+$ <eq-qq-reward-convention>
+两者的区别只有两点：（1）$R_t$ 与 $R_(t + 1)$ 仅是对同一奖励的不同命名，数学内容相同；（2）下角标是否包含奖励取决于给定 $(s, a, s')$ 后奖励是否仍随机——若奖励由 $(s, a, s')$ 确定，则 $R_(t + 1)$ 不再是独立的随机变量，@eq-bellman-exp-qq 的下角标可省去 $R_(t + 1)$，与 @eq-qq-reward-convention 完全一致；若奖励本身随机（本文的一般设定），则必须同时对 $R_(t + 1)$ 求平均。
 
 #divider()
 
@@ -731,21 +748,21 @@ $ <eq-bellman-exp-qq-compact>
 <sec-two-derivation-paths>
 导出 @tab-bellman-exp-explicit 中的显式求和方程有两条完全等价的严格证明路径（对照见 @fig-two-paths-expansion）：
 
-+ #strong[路径一（由第 3 章条件期望方程一步展开）]：在#link(<thm-3.3>)[定理 3.3] 的 $v_pi (s) = bb(E)_pi [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$ 中，期望内部仅依赖于一步随机变量 $(R_(t + 1), S_(t + 1))$。给定 $S_t = s$ 时，产生动作 $A_t = a$ 并转移到 $(S_(t + 1) = s', R_(t + 1) = r)$ 的联合条件概率为 $pi(a divides s) p(s', r divides s, a)$。直接按条件期望定义（P7）写出求和式并分解边缘概率，一步即可得到显式展开式：
++ #strong[路径一（由第 3 章条件期望方程一步展开）]：在#link(<thm-3.3>)[定理 3.3] 的 $v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$ 中，期望内部仅依赖于一步随机变量 $(R_(t + 1), S_(t + 1))$。给定 $S_t = s$ 时，产生动作 $A_t = a$ 并转移到 $(S_(t + 1) = s', R_(t + 1) = r)$ 的联合条件概率为 $pi(a divides s) p(s', r divides s, a)$。直接按条件期望定义（P7）写出求和式并分解边缘概率，一步即可得到显式展开式：
   $
-    v_pi (s) & = bb(E)_pi [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s] \
+    v_pi (s) & = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s] \
     & = sum_(a in cal(A)) #mhl($pi(a divides s)$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$)] .
   $ <eq-direct-one-step-expand>
 
-+ #strong[路径二（不依赖塔性质，从回报分布 $p(g divides s)$ 底层展开）]：直接从价值函数原始定义 $v_pi (s) = bb(E)_pi [R_(t + 1) + gamma G_(t + 1) divides S_t = s]$ 出发，利用条件全概率公式（P5）对未来回报分布 $p(g divides s)$ 显式引入中间变量 $(a, s', r)$，再通过#link(<lem-3>)[引理 3] 结论 A（$p(g divides s', r, a, s) = p(g divides s')$）完成约简。这一底层路径直观展示了样本空间中每一步概率是如何拆解与重组的，下文 4.2 节将完整呈现该推导过程。
++ #strong[路径二（不依赖塔性质，从回报分布 $p(g divides s)$ 底层展开）]：直接从价值函数原始定义 $v_pi (s) = bb(E)_(R_(t + 1), G_(t + 1)) [R_(t + 1) + gamma G_(t + 1) divides S_t = s]$ 出发，利用条件全概率公式（P5）对未来回报分布 $p(g divides s)$ 显式引入中间变量 $(a, s', r)$，再通过#link(<lem-3>)[引理 3] 结论 A（$p(g divides s', r, a, s) = p(g divides s')$）完成约简。这一底层路径直观展示了样本空间中每一步概率是如何拆解与重组的，下文 4.2 节将完整呈现该推导过程。
 
 #figure(
   diagram(
     spacing: (14mm, 11mm),
     node-stroke: 0.8pt + accent,
     edge-stroke: 0.8pt + accent,
-    node((0.5, 0), [*价值函数定义与回报一步递推* \ $v_pi (s) = bb(E)_pi [R_(t+1) + gamma G_(t+1) divides S_t = s]$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 68mm),
-    node((0, 1), [*路径一：条件期望与塔性质（第 3 章）* \ 引入 $S_(t+1)$ 加细条件并由引理 3B 化简 \ $v_pi (s) = bb(E)_pi [R_(t+1) + gamma v_pi (S_(t+1)) divides S_t = s]$], fill: white, corner-radius: 4pt, inset: 6pt, width: 66mm),
+    node((0.5, 0), [*价值函数定义与回报一步递推* \ $v_pi (s) = bb(E)_(R_(t+1), G_(t+1)) [R_(t+1) + gamma G_(t+1) divides S_t = s]$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 68mm),
+    node((0, 1), [*路径一：条件期望与塔性质（第 3 章）* \ 引入 $S_(t+1)$ 加细条件并由引理 3B 化简 \ $v_pi (s) = bb(E)_(R_(t+1), S_(t+1)) [R_(t+1) + gamma v_pi (S_(t+1)) divides S_t = s]$], fill: white, corner-radius: 4pt, inset: 6pt, width: 66mm),
     node((1, 1), [*路径二：回报分布与全概率公式（第 4 章）* \ 展开 $p(g divides s) = sum_(a, s', r) pi(a divides s) p(s', r divides s, a) p(g divides s')$ \ 交换有限求和与期望算子], fill: white, corner-radius: 4pt, inset: 6pt, width: 66mm),
     node((0.5, 2), [*贝尔曼期望方程（显式展开形式）* \ $v_pi (s) = sum_a pi(a divides s) [sum_r p(r divides s, a) r + gamma sum_(s') p(s' divides s, a) v_pi (s')]$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 84mm),
     edge((0.5, 0), (0, 1), "->", [引理 2 + 引理 3B], label-side: right),
@@ -783,7 +800,7 @@ $ <eq-exp-explicit-qv>
 
 #strong[证明]：由动作价值函数的定义（@eq-q-def）、回报递推式（@eq-return-recursion）与#link(<lem-1>)[引理 1]，将 $q_pi (s, a)$ 拆分为即时奖励期望项 (A) 与未来回报期望项 (B)：
 $
-  q_pi (s, a) = underbrace(bb(E)_pi [R_(t + 1) divides S_t = s, A_t = a], upright("记为项 (A)")) + gamma thin underbrace(bb(E)_pi [G_(t + 1) divides S_t = s, A_t = a], upright("记为项 (B)")) .
+  q_pi (s, a) = underbrace(bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s, A_t = a], upright("记为项 (A)")) + gamma thin underbrace(bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, A_t = a], upright("记为项 (B)")) .
 $
 + #strong[展开即时奖励期望项 (A)]：条件中已给定 $(s, a)$，无需对动作 $a$ 求和，只需按 P7 写出期望并联系联合分布 $p(s', r divides s, a)$：
   $
@@ -806,14 +823,14 @@ $ <eq-exp-explicit-vv>
 
 #strong[证明（方法一：由定理 4.1 与定理 4.2 直接复合）]：将#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv）中的 $q_pi (s, a)$ 展开式直接代入#link(<thm-4.1>)[定理 4.1]（@eq-exp-explicit-vq）的 $v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a)$，一步即得 @eq-exp-explicit-vv。$square.filled.medium$
 
-#strong[证明（方法二：从回报分布 $p(g divides s)$ 完整展开）]：若不借助 $q_pi (s, a)$，直接对 $v_pi (s) = bb(E)_pi [R_(t + 1) divides S_t = s] + gamma bb(E)_pi [G_(t + 1) divides S_t = s]$ 的两项分别用多变量条件全概率公式（@eq-p5-multi）与 @eq-mdp-joint-decomp 展开：
+#strong[证明（方法二：从回报分布 $p(g divides s)$ 完整展开）]：若不借助 $q_pi (s, a)$，直接对 $v_pi (s) = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s]$ 的两项分别用多变量条件全概率公式（@eq-p5-multi）与 @eq-mdp-joint-decomp 展开：
 - #strong[即时奖励期望项]：引入 $(a, s')$ 展开边缘概率 $p(r divides s) = sum_(a in cal(A)) sum_(s' in cal(S)) pi(a divides s) p(s', r divides s, a)$，交换求和得：
   $
-    bb(E)_pi [R_(t + 1) divides S_t = s] = sum_(r in cal(R)) r thin p(r divides s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(r in cal(R)) p(r divides s, a) r .
+    bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] = sum_(r in cal(R)) r thin p(r divides s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(r in cal(R)) p(r divides s, a) r .
   $
 - #strong[未来回报期望项]：将 @eq-mdp-joint-decomp 的 $p(g divides s) = sum_(a in cal(A)) pi(a divides s) sum_(s', r) p(s', r divides s, a) #mhlb($p(g divides s')$)$ 代入 $sum_(g in Gamma) g thin p(g divides s)$，并将关于 $g$ 的求和移至最内层：
   $
-    bb(E)_pi [G_(t + 1) divides S_t = s] & = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) underbrace(sum_(g in Gamma) g thin #mhlb($p(g divides s')$), = thin bb(E)_pi [G_(t + 1) divides S_(t + 1) = s'] thin = thin v_pi (s')) \
+    bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s] & = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) underbrace(sum_(g in Gamma) g thin #mhlb($p(g divides s')$), = thin bb(E)_(G_(t + 1)) [G_(t + 1) divides S_(t + 1) = s'] thin = thin v_pi (s')) \
     & = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$) .
   $
 将上述两项相加并提取外层公因式 $sum_(a in cal(A)) pi(a divides s)$，同样得到 @eq-exp-explicit-vv。$square.filled.medium$
@@ -842,7 +859,7 @@ $ <eq-exp-explicit-qq>
     & + gamma sum_(s' in cal(S)) underbrace((sum_(r in cal(R)) p(s', r divides s, a)), = thin p(s' divides s, a)) v_pi (s') .
   $ <eq-variant-joint>
 
-+ #strong[期望奖励函数形式（动态规划与矩阵运算常用形式）]：预先定义状态-动作期望奖励函数 $r(s, a) eq.dot bb(E) [R_(t + 1) divides S_t = s, A_t = a] = sum_(r in cal(R)) p(r divides s, a) r = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) r$（或定义依赖于后继状态的期望奖励 $r(s, a, s') eq.dot bb(E) [R_(t + 1) divides S_t = s, A_t = a, S_(t + 1) = s']$），从而消去对奖励集合 $cal(R)$ 的显式求和：
++ #strong[期望奖励函数形式（动态规划与矩阵运算常用形式）]：预先定义状态-动作期望奖励函数 $r(s, a) eq.dot bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s, A_t = a] = sum_(r in cal(R)) p(r divides s, a) r = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) r$（或定义依赖于后继状态的期望奖励 $r(s, a, s') eq.dot bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s, A_t = a, S_(t + 1) = s']$），从而消去对奖励集合 $cal(R)$ 的显式求和：
   $
     #mhl($r(s, a)$) + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$) = sum_(s' in cal(S)) p(s' divides s, a) [r(s, a, s') + gamma #mhlg($v_pi (s')$)] .
   $ <eq-variant-expected-reward>
@@ -972,11 +989,11 @@ $ <eq-opt-def>
     [$v_star arrow.r q_star$ \ #text(size: 8.2pt, fill: muted)[策略层单步贪心]],
     [$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) $],
     [$q_star arrow.r v_star$ \ #text(size: 8.2pt, fill: muted)[环境层单步转换]],
-    [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
     [$v_star arrow.r v_star$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
-    [$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
+    [$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] $],
     [$q_star arrow.r q_star$ \ #text(size: 8.2pt, fill: muted)[两层复合自递推]],
-    [$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] $],
+    [$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] $],
   ),
 ) <tab-bellman-opt-cond>
 
@@ -1036,22 +1053,22 @@ $
 #strong[定理 5.2（$q_star$ 关于 $v_star$ 的贝尔曼最优方程）] <thm-5.2> 对任意状态-动作对 $(s, a) in cal(S) times cal(A)$，最优动作价值函数满足：
 
 $
-  #eqbox([$ q_star (s, a) = bb(E) [#mhl($R_(t + 1)$) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A) $])
+  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A) $])
 $ <eq-opt-cond-qv>
 
 #strong[证明]：从定义 $q_star (s, a) eq.dot max_pi q_pi (s, a)$ 出发，代入#link(<thm-3.2>)[定理 3.2]（@eq-bellman-exp-qv）：
 $
-  q_star (s, a) & eq.dot max_pi q_pi (s, a) = max_pi bb(E)_pi [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s, A_t = a] \
-  & = bb(E) [R_(t + 1) + gamma #mhlb($max_pi v_pi (S_(t + 1))$) divides S_t = s, A_t = a] quad #[（由#link(<fact-f1>)[事实 F1]、#link(<fact-f2>)[F2] 将 $max_pi$ 移入期望内）] \
-  & = bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] . #h(1.5em) square.filled.medium
+  q_star (s, a) & eq.dot max_pi q_pi (s, a) = max_pi bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s, A_t = a] \
+  & = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlb($max_pi v_pi (S_(t + 1))$) divides S_t = s, A_t = a] quad #[（由#link(<fact-f1>)[事实 F1]、#link(<fact-f2>)[F2] 移入 $max_pi$）] \
+  & = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] . #h(1.5em) square.filled.medium
 $
-（注：给定 $S_t = s, A_t = a$ 后，一步转移 $(S_(t + 1), R_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境决定，故省去期望算子的下标 $pi$。）
+（注：给定 $S_t = s, A_t = a$ 后，一步转移 $(S_(t + 1), R_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境决定，与策略无关，故 $max_pi$ 只作用于后继价值 $v_pi (S_(t + 1))$。）
 
 === 状态价值的自递推最优方程（$v_star arrow.r v_star$）
 #strong[定理 5.3（状态价值的贝尔曼最优方程）] <thm-5.3> 对任意状态 $s in cal(S)$，最优状态价值函数满足：
 
 $
-  #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " s in cal(S) $])
+  #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " s in cal(S) $])
 $ <eq-opt-cond-vv>
 
 #strong[证明]：将#link(<thm-5.2>)[定理 5.2]（@eq-opt-cond-qv）代入#link(<thm-5.1>)[定理 5.1]（@eq-opt-cond-vq）右端的 $q_star (s, a)$，立得 @eq-opt-cond-vv。$square.filled.medium$
@@ -1060,7 +1077,7 @@ $ <eq-opt-cond-vv>
 #strong[定理 5.4（动作价值的贝尔曼最优方程）] <thm-5.4> 对任意状态-动作对 $(s, a) in cal(S) times cal(A)$，最优动作价值函数满足：
 
 $
-  #eqbox([$ q_star (s, a) = bb(E) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) thin divides thin S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A) $])
+  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a] med "for all " (s, a) in cal(S) times cal(A) $])
 $ <eq-opt-cond-qq>
 
 #strong[证明]：对后继状态 $S_(t + 1)$ 应用#link(<thm-5.1>)[定理 5.1] 得 $v_star (S_(t + 1)) = max_(a' in cal(A)) q_star (S_(t + 1), a')$，将其代入#link(<thm-5.2>)[定理 5.2]（@eq-opt-cond-qv）右端，立得 @eq-opt-cond-qq。$square.filled.medium$
@@ -1273,7 +1290,7 @@ $
   - #strong[矩阵求逆解析解与不动点迭代的边界]：在固定策略评估中，当状态数 $|cal(S)| lt.tilde 10^3$ 时，可直接构造 @eq-matrix-bellman 的线性方程组 $(I - gamma P_pi) v_pi = r_pi$ 通过高斯消元或 LU 分解求精确解析解；当 $|cal(S)|$ 较大且转移矩阵 $P_pi$ 稀疏时，应采用基于贝尔曼期望算子 $cal(T)^pi$ 的迭代策略评估，将单轮开销降至与非零转移边数成正比。
 
 + #strong[环境模型未知、仅能通过交互采样获取轨迹（无模型强化学习场景）]：
-  - #strong[必须选用条件期望形式与 $q arrow.r q$ 递推（#link(<thm-3.4>)[定理 3.4]、#link(<thm-5.4>)[定理 5.4]）]：在无模型设定下，智能体无法访问 $p(s', r divides s, a)$。若仅估计状态价值 $v(s)$，即使获得了准确的 $v_star$，也无法在不依赖 $p(s', r divides s, a)$ 的情况下计算 $arg max_a bb(E) [R_(t + 1) + gamma v_star (S_(t + 1)) divides s, a]$ 来选出动作。反之，$q arrow.r q$ 的条件期望形式将环境转移期望置于最外层，可直接用单步交互样本 $(s, a, r, s')$ 构造 @eq-td-control 的无偏时序差分目标，并通过 $arg max_a Q(s, a)$ 直接实现免模型控制。
+  - #strong[必须选用条件期望形式与 $q arrow.r q$ 递推（#link(<thm-3.4>)[定理 3.4]、#link(<thm-5.4>)[定理 5.4]）]：在无模型设定下，智能体无法访问 $p(s', r divides s, a)$。若仅估计状态价值 $v(s)$，即使获得了准确的 $v_star$，也无法在不依赖 $p(s', r divides s, a)$ 的情况下计算 $arg max_a bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_star (S_(t + 1)) divides s, a]$ 来选出动作。反之，$q arrow.r q$ 的条件期望形式将环境转移期望置于最外层，可直接用单步交互样本 $(s, a, r, s')$ 构造 @eq-td-control 的无偏时序差分目标，并通过 $arg max_a Q(s, a)$ 直接实现免模型控制。
   - #strong[高维或连续空间的神经网络算子近似]：当 $|cal(S)|$ 或 $|cal(A)|$ 为高维或连续空间时，表格型存储与显式求和失效，需将 @eq-td-control 中的时序差分残差转化为均方误差损失函数（如 DQN），并在连续动作空间下配合参数化策略网络近似 $max_a Q(s, a)$ 算子（如 DDPG、TD3、SAC 等 Actor-Critic 架构）。
 
 + #strong[观测状态不满足马尔可夫性（非平稳或部分可观测场景）]：
