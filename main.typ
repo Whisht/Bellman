@@ -281,7 +281,7 @@
 // ============================================================
 本文档从概率论公理体系与有限马尔可夫决策过程（MDP）的基本定义出发，系统、严密地推导强化学习中的核心方程体系——#strong[贝尔曼期望方程]（Bellman Expectation Equation）与#strong[贝尔曼最优方程]（Bellman Optimality Equation）。
 
-在强化学习经典文献（如 Sutton & Barto《强化学习：导论》）中，贝尔曼方程通常以两种等价的数学形式出现：一是以条件期望表征的#strong[紧凑形式]（基于全期望公式与塔性质），二是以状态转移概率与策略分布显式求和表征的#strong[展开形式]（基于全概率公式与链式法则）。本笔记严格区分并打通这两条推导路径，按“先单步桥接（$v arrow.r q$、$q arrow.r v$）、后复合自递推（$v arrow.r v$、$q arrow.r q$）”的统一逻辑组织全文，核心对照见 @tab-overview。
+在强化学习经典文献（如 Sutton & Barto《强化学习：导论》）中，贝尔曼方程通常以两种等价的数学形式出现：一是以条件期望表征的#strong[紧凑形式]（基于全期望公式与塔性质），二是以状态转移概率与策略分布显式求和表征的#strong[展开形式]（基于全概率公式与链式法则）。本笔记严格区分并打通这两条推导路径，按“先单步桥接（$v arrow.r q$、$q arrow.r v$）、后复合自递推（$v arrow.r v$、$q arrow.r q$）”的统一逻辑组织方程推导（#link(<sec-mdp>)[第 1]--#link(<sec-bellman-opt>)[5 章]），核心对照见 @tab-overview；进而从#strong[期望值与不动点估计理论]出发，系统阐述基于压缩映射不动点迭代的动态规划（含值迭代）、基于大数定律的蒙特卡洛估计以及基于 Robbins-Monro 随机近似理论的时序差分（TD）估计方法，给出状态价值与动作价值估计算法结合贝尔曼期望/最优方程导出强化学习算法体系的关联谱系（#link(<sec-value-estimation>)[第 6]--#link(<sec-algo-selection>)[7 章]）。
 
 为突出公式中的核心结构，全文采用三色标记高亮关键数学项：$mhl(pi(a divides s) \/ max_a)$（琥珀色）标记#strong[策略层算子或核心变换]，$mhlb(S_(t+1) \/ p(g divides s'))$（浅蓝色）标记#strong[新引入的条件变量或马尔可夫条件独立化简项]，$mhlg(v_pi (S_(t+1)) \/ q_star (s', a'))$（浅绿色）标记#strong[后继时刻的价值递推项]。
 
@@ -1189,9 +1189,435 @@ $
 #divider()
 
 // ============================================================
-//  第 6 章：方程结构定性与强化学习算法选型
+//  第 6 章：期望值估计理论与状态/动作价值估计方法
 // ============================================================
-= 方程结构定性与强化学习算法选型
+= 期望值估计理论与状态/动作价值估计方法
+<sec-value-estimation>
+
+#link(<sec-bellman-exp-cond>)[第 3]--#link(<sec-bellman-opt>)[5 章]建立了状态价值（$v_pi, v_star$）与动作价值（$q_pi, q_star$）满足的八条贝尔曼方程。然而，无论在原始定义 $v_pi (s) = bb(E) [G_t divides S_t = s]$ 中，还是在单步递推的条件期望形式 $bb(E) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$ 中，核心运算均包含条件数学期望算子 $bb(E) [dot.op]$ 以及待求解的自指不动点结构。因此，从理论方程走向可计算的强化学习算法，取决于以下两个问题：
+1. #strong[如何计算或估计条件期望 $bb(E) [X divides C]$]：当环境模型 $p(s', r divides s, a)$ 已知时，条件期望可通过显式概率加权求和精确计算；当环境模型未知（Model-Free）时，则必须从智能体与环境交互产生的随机轨迹样本中#strong[估计期望值]。
+2. #strong[如何处理未来回报 $G_(t + 1)$ 的递推依赖]：是直接采样完整轨迹直到底层终止以观测真实回报 $G_t$（#strong[无自举]，No Bootstrapping），还是利用贝尔曼方程的一步递推关系，用当前对后继价值的估计量 $V(S_(t + 1))$ 或 $Q(S_(t + 1), dot.op)$ 替代真实未来回报期望（#strong[自举]，Bootstrapping）。
+
+本章首先建立期望值与不动点估计的三类数学工具：压缩映射不动点迭代理论、大数定律与蒙特卡洛样本均值估计、Robbins-Monro 随机近似理论；随后列出这三类方法针对状态价值（$v_pi, v_star$）与动作价值（$q_pi, q_star$）的估计算法与推导。
+
+#divider()
+
+== 期望值估计与方程求解的三类数学工具
+<sec-expectation-estimation-theory>
+
+=== 基于压缩映射的不动点迭代理论（已知分布下的精确期望）
+<sec-fixed-point-theory-detail>
+当环境转移模型 $p(s', r divides s, a)$ 与策略 $pi(a divides s)$ 完全已知时，贝尔曼方程右端的条件期望可按#link(<sec-bellman-exp-explicit>)[第 4 章]与#link(<sec-opt-explicit>)[第 5.3 节]的显式展开式精确求值。此时求解价值函数等价于在完备赋范线性空间（Banach 空间）中求解算子不动点方程 $x = cal(T) x$。
+
+除了#link(<thm-5.9>)[定理 5.9] 定义的状态价值算子 $cal(T)^pi_V, cal(T)^star_V : bb(R)^(|cal(S)|) arrow.r bb(R)^(|cal(S)|)$ 外，在动作价值空间 $(bb(R)^(|cal(S)| times |cal(A)|), norm(dot.op)_oo)$（其中 $norm(Q)_oo eq.dot max_(s, a) |Q(s, a)|$）上可同样定义#strong[动作价值贝尔曼期望算子 $cal(T)^pi_Q$] 与#strong[动作价值贝尔曼最优算子 $cal(T)^star_Q$]：
+$
+  (cal(T)^pi_Q Q)(s, a) & eq.dot sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($Q(s', a')$)], \
+  (cal(T)^star_Q Q)(s, a) & eq.dot sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhl($max_(a' in cal(A))$) #mhlg($Q(s', a')$)] .
+$ <eq-q-bellman-operators>
+
+#strong[命题 6.1（四类贝尔曼算子的统一 $gamma$-压缩性与不动点迭代误差界）] <prop-6.1> 当 $gamma in [0, 1)$ 时，$cal(T)^pi_V, cal(T)^star_V, cal(T)^pi_Q, cal(T)^star_Q$ 在最大模范数 $norm(dot.op)_oo$ 下均为 $gamma$-压缩映射。设 $cal(T)$ 为其中任一算子，$x^star$ 为其唯一不动点（即 $v_pi, v_star, q_pi$ 或 $q_star$），对任意初值 $x_0$ 生成的不动点迭代序列 $x_(k + 1) = cal(T) x_k$，满足如下先验与后验截断误差界：
+$
+  #eqbox([$ norm(x_k - x^star)_oo lt.eq #mhl($frac(gamma^k, 1 - gamma)$) norm(x_1 - x_0)_oo quad & upright("（先验界）") \ norm(x_k - x^star)_oo lt.eq #mhl($frac(gamma, 1 - gamma)$) norm(x_k - x_(k - 1))_oo quad & upright("（后验界）") $])
+$ <eq-fixed-point-error-bound>
+
+#strong[证明]：$cal(T)^pi_Q$ 与 $cal(T)^star_Q$ 的 $gamma$-压缩性证明与#link(<thm-5.9>)[定理 5.9] 完全同构：利用 $|max_(a') Q_1(s', a') - max_(a') Q_2(s', a')| lt.eq max_(a') |Q_1(s', a') - Q_2(s', a')| lt.eq norm(Q_1 - Q_2)_oo$ 及 $sum_(s', r) p(s', r divides s, a) = 1$ 即得 $norm(cal(T)^star_Q Q_1 - cal(T)^star_Q Q_2)_oo lt.eq gamma norm(Q_1 - Q_2)_oo$。进而由三角不等式与压缩性质：
+$
+  norm(x_k - x^star)_oo & = norm(cal(T) x_(k - 1) - cal(T) x^star)_oo lt.eq gamma norm(x_(k - 1) - x^star)_oo \
+  & lt.eq gamma [norm(x_(k - 1) - x_k)_oo + norm(x_k - x^star)_oo] .
+$
+移项整理 $(1 - gamma) norm(x_k - x^star)_oo lt.eq gamma norm(x_k - x_(k - 1))_oo$ 即得后验误差界；再由递推 $norm(x_k - x_(k - 1))_oo lt.eq gamma^(k - 1) norm(x_1 - x_0)_oo$ 代入即得先验误差界。$square.filled.medium$
+
+#strong[算法意义]：@eq-fixed-point-error-bound 的后验误差界为动态规划给出可计算的停止准则：若要求最终价值估计误差不超过 $epsilon$，只需在相邻两次迭代的最大残差（Bellman Residual）满足 $norm(x_k - x_(k - 1))_oo lt.eq frac(1 - gamma, gamma) epsilon$ 时终止迭代即可。
+
+=== 基于大数定律的蒙特卡洛期望估计（样本均值与增量式更新）
+<sec-mc-expectation-theory>
+当环境概率分布未知、但可对随机变量 $X$（如从状态 $s$ 出发的完整轨迹折扣回报 $G_t$）进行独立同分布（i.i.d.）采样获得样本序列 ${x_1, x_2, dots.h, x_N}$ 时，欲估计总体数学期望 $mu eq.dot bb(E) [X]$（设方差 $upright("Var")(X) = sigma^2 < oo$），最直接的统计估计量是#strong[经验样本均值]（Empirical Mean）：
+$
+  hat(mu)_N eq.dot #mhl($frac(1, N) sum_(i = 1)^N x_i$) .
+$ <eq-mc-sample-mean>
+
+#strong[命题 6.2（蒙特卡洛样本均值的统计性质与增量递推公式）] <prop-6.2> 设 ${X_i}_(i = 1)^N$ 独立同分布且 $bb(E) [X_i] = mu, upright("Var")(X_i) = sigma^2 < oo$，则样本均值估计量 $hat(mu)_N$ 满足：
+1. #strong[无偏性与方差衰减]：对任意样本量 $N gt.eq 1$，$hat(mu)_N$ 是 $mu$ 的无偏估计，且均方误差（方差）以 $O(1 \/ N)$ 速率衰减：
+   $
+     bb(E) [hat(mu)_N] = mu, #h(2.5em) upright("MSE")(hat(mu)_N) = upright("Var")(hat(mu)_N) = #mhlb($frac(sigma^2, N)$) arrow.r_(N arrow.r oo) 0 .
+   $ <eq-mc-unbiased-var>
+2. #strong[强大数定律保证的一致收敛性]：由 Kolmogorov 强大数定律，当采样次数 $N arrow.r oo$ 时，$hat(mu)_N$ 以概率 $1$（几乎处处，almost surely）收敛于真实期望 $mu$，即 $Pr(lim_(N arrow.r oo) hat(mu)_N = mu) = 1$。
+3. #strong[增量式更新恒等式（Incremental Mean Update）]：无需在内存中存储全部历史样本 ${x_1, dots.h, x_N}$，$hat(mu)_N$ 可由上一时刻估计值 $hat(mu)_(N - 1)$ 与新样本 $x_N$ 仅以 $O(1)$ 时间与空间开销递推更新：
+   $
+     #eqbox([$ hat(mu)_N = hat(mu)_(N - 1) + #mhl($frac(1, N)$) (#mhlg($x_N$) - hat(mu)_(N - 1)) $])
+   $ <eq-incremental-mean>
+
+#strong[证明（增量式更新公式）]：将 @eq-mc-sample-mean 的前 $N - 1$ 项分离并代入 $sum_(i = 1)^(N - 1) x_i = (N - 1) hat(mu)_(N - 1)$：
+$
+  hat(mu)_N & = frac(1, N) (sum_(i = 1)^(N - 1) x_i + x_N) = frac(1, N) [(N - 1) hat(mu)_(N - 1) + x_N] \
+  & = frac(N hat(mu)_(N - 1) - hat(mu)_(N - 1) + x_N, N) = hat(mu)_(N - 1) + #mhl($frac(1, N)$) (#mhlg($x_N$) - hat(mu)_(N - 1)) . #h(2em) square.filled.medium
+$
+
+#strong[非平稳环境或策略演进下的常步长指数移动平均（EMA）]：在强化学习的控制过程中，策略 $pi$ 会随价值估计的更新而不断改进，导致回报分布随时间发生漂移（非平稳，Non-stationary）。此时若仍采用衰减步长 $alpha_N = 1 \/ N$，早期过时策略产生的样本将与最新样本享有相同权重 $1 \/ N$。工程上常将 $1 \/ N$ 替换为常数步长 $alpha in (0, 1]$，展开递推式可得：
+$
+  hat(mu)_N = hat(mu)_(N - 1) + alpha (x_N - hat(mu)_(N - 1)) = #mhlb($(1 - alpha)^N$) hat(mu)_0 + sum_(i = 1)^N #mhl($alpha (1 - alpha)^(N - i)$) x_i .
+$ <eq-ema-expansion>
+由于权重满足 $(1 - alpha)^N + sum_(i = 1)^N alpha (1 - alpha)^(N - i) = 1$，且越早的样本 $x_i$ 其权重 $(1 - alpha)^(N - i)$ 呈指数衰减，常步长更新能够快速遗忘旧策略的历史样本、追踪最新分布的期望值。
+
+=== 基于 Robbins-Monro 理论的随机近似估计（带噪求根与在线步长准则）
+<sec-robbins-monro-theory>
+更一般地，许多期望估计与算子不动点问题均可统一表述为#strong[含噪函数的求根问题]（Stochastic Root-Finding Problem）。设目标是求解关于参数 $w$ 的确定性方程：
+$
+  g(w) eq.dot bb(E)_Y [#mhlb($w - Y$)] = w - bb(E) [Y] = 0 quad arrow.l.r.double quad w^star = bb(E) [Y] .
+$ <eq-rm-root-problem>
+在无模型设定下，由于随机变量 $Y$ 的分布未知，无法直接计算函数值 $g(w)$，但在每次交互步 $k$ 可以获得 $Y$ 的一个带噪观测样本 $y_k = bb(E) [Y] + eta_k$（其中 $eta_k$ 为零均值随机噪声，$bb(E) [eta_k divides cal(F)_(k - 1)] = 0$），从而构造出 $g(w_k)$ 的无偏随机观测：
+$
+  tilde(g)(w_k, eta_k) eq.dot w_k - y_k = g(w_k) - eta_k .
+$ <eq-rm-noisy-obs>
+
+#strong[定理 6.1（Robbins-Monro 随机近似收敛定理，1951）] <thm-6.1> 针对求根问题 $g(w) = 0$，构造如下随机近似迭代序列：
+$
+  #eqbox([$ w_(k + 1) = w_k - #mhl($alpha_k$) tilde(g)(w_k, eta_k) = w_k + #mhl($alpha_k$) (#mhlg($y_k$) - w_k) $])
+$ <eq-robbins-monro-update>
+若满足以下三条核心条件：
+1. #strong[单调强恢复性质]：$g(w)$ 连续且在唯一根 $w^star$ 处满足 $(w - w^star) g(w) > 0$（对任意 $w eq.not w^star$），并在全局满足线性增长界；
+2. #strong[鞅差分有界方差噪声]：条件期望噪声满足 $bb(E) [eta_k divides cal(F)_(k - 1)] = 0$ 且条件方差有界 $bb(E) [eta_k^2 divides cal(F)_(k - 1)] lt.eq sigma^2 < oo$（其中 $cal(F)_(k - 1)$ 为至第 $k - 1$ 步的历史 $sigma$-代数）；
+3. #strong[Robbins-Monro 步长条件]：正步长序列 ${alpha_k}_(k = 1)^oo$ 满足：
+   $
+     #eqbox([$ sum_(k = 1)^oo #mhl($alpha_k$) = oo, #h(3em) sum_(k = 1)^oo #mhl($alpha_k^2$) < oo $])
+   $ <eq-rm-step-conditions>
+则迭代序列 ${w_k}$ 以概率 $1$ 收敛于真实期望根 $w^star = bb(E) [Y]$（即 $Pr(lim_(k arrow.r oo) w_k = w^star) = 1$）。
+
+#strong[收敛机理与直觉剖析]：记第 $k$ 步的估计误差为 $e_k eq.dot w_k - w^star$，对于期望估计问题 $g(w_k) = w_k - w^star = e_k$，将 @eq-robbins-monro-update 两边减去 $w^star$ 并对两边平方取条件期望（利用 $bb(E) [eta_k divides cal(F)_(k - 1)] = 0$ 消去交叉项）：
+$
+  e_(k + 1) & = w_k - w^star + alpha_k (w^star + eta_k - w_k) = #mhlb($(1 - alpha_k) e_k$) + #mhlg($alpha_k eta_k$), \
+  bb(E) [e_(k + 1)^2 divides cal(F)_(k - 1)] & = #mhlb($(1 - alpha_k)^2 e_k^2$) + #mhlg($alpha_k^2 bb(E) [eta_k^2 divides cal(F)_(k - 1)]$) lt.eq (1 - alpha_k)^2 e_k^2 + alpha_k^2 sigma^2 .
+$ <eq-rm-error-recursion>
+@eq-rm-error-recursion 给出两个步长条件的含义：
+- #strong[第一条件 $sum_(k = 1)^oo alpha_k = oo$（步长不能衰减过快）]：对最终满足 $0 < alpha_k < 1$ 的步长，确定性收缩因子满足 $product_(k = 1)^N (1 - alpha_k) lt.eq exp(- sum_(k = 1)^N alpha_k)$，故 $sum alpha_k = oo$ 足以保证 $product (1 - alpha_k) arrow.r 0$，即无论初始估计 $w_0$ 距离真值 $w^star$ 多远，算法都有足够的累积步幅完全消除初始偏差 $e_0$。
+- #strong[第二条件 $sum_(k = 1)^oo alpha_k^2 < oo$（步长必须最终趋于零以抑制采样噪声）]：每一步注入的随机噪声方差项为 $alpha_k^2 sigma^2$，只有当平方和 $sum alpha_k^2 < oo$ 时，无穷步累计的噪声方差总和才有界，且 $alpha_k arrow.r 0$ 使得迭代在逼近真值 $w^star$ 后不再受单次采样噪声 $eta_k$ 干扰而发生永恒震荡。
+- #strong[特例验证]：调和级数步长 $alpha_k = frac(1, k)$ 同时满足 $sum_(k = 1)^oo frac(1, k) = oo$ 与 $sum_(k = 1)^oo frac(1, k^2) = frac(pi^2, 6) < oo$。将 $alpha_k = frac(1, k)$ 代入 @eq-robbins-monro-update，即为#link(<prop-6.2>)[命题 6.2] 的蒙特卡洛增量均值公式（@eq-incremental-mean）。更一般的步长形式为 $alpha_k = frac(c, (k + k_0)^p)$（其中 $p in (0.5, 1]$）。
+
+#divider()
+
+== 基于不动点理论的动态规划估计（模型已知：精确期望 + 自举）
+<sec-dp-fixed-point>
+当环境模型 $p(s', r divides s, a)$ 完全已知时，无需求助于轨迹采样，可直接利用#link(<sec-fixed-point-theory-detail>)[第 6.1 节]的压缩映射不动点理论，对#link(<sec-bellman-exp-explicit>)[第 4 章]与#link(<sec-opt-explicit>)[第 5.3 节]的#strong[显式展开形式贝尔曼方程]构造确定性不动点迭代算法。下面分别列出针对#strong[状态价值（$v_pi, v_star$）]与#strong[动作价值（$q_pi, q_star$）]的不动点估计算法。
+
+=== 状态价值的不动点迭代估计（$v_pi$ 迭代评估与 $v_star$ 值迭代算法）
+<sec-dp-state-value>
+1. #strong[迭代策略评估（Iterative Policy Evaluation，估计固定策略状态价值 $v_pi$）]：
+   依据#link(<thm-4.3>)[定理 4.3] 的 $v_pi arrow.r v_pi$ 贝尔曼期望展开方程（@eq-exp-explicit-vv），将状态价值贝尔曼期望算子 $cal(T)^pi_V$ 直接转化为不动点迭代公式。从任意初始向量 $V_0 in bb(R)^(|cal(S)|)$ 出发，第 $k + 1$ 轮对所有 $s in cal(S)$ 执行全宽回溯（Full-Width Backup）：
+   $
+     #eqbox([$ V_(k + 1) (s) arrow.l (cal(T)^pi_V V_k)(s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhlg($V_k (s')$)] $])
+   $ <eq-dp-policy-eval-v>
+   由#link(<prop-6.1>)[命题 6.1]，当 $k arrow.r oo$ 时，$V_k$ 以线性速率 $O(gamma^k)$ 几何收敛于唯一不动点 $v_pi$。在实际计算中，既可使用双数组做#strong[同步更新]（Synchronous Update），也可在单数组上直接覆盖做#strong[就地异步更新]（In-place / Gauss-Seidel Update，$V(s) arrow.l sum_a pi(a divides s) sum_(s', r) p(s', r divides s, a) [r + gamma V(s')]$），后者同样保收敛且通常收敛更快。
+
+2. #strong[策略迭代算法（Policy Iteration，交替评估 $v_pi$ 与贪心改进逼近 $v_star$）]：
+   在获得当前策略 $pi_k$ 的精确状态价值 $v_(pi_k)$ 后，利用#link(<thm-4.2>)[定理 4.2] 的 $q_pi arrow.r v_pi$ 桥接方程计算动作价值 $q_(pi_k) (s, a) = sum_(s', r) p(s', r divides s, a) [r + gamma v_(pi_k) (s')]$，进而构造贪心改进策略：
+   $
+     pi_(k + 1) (s) in #mhl($arg max_(a in cal(A))$) q_(pi_k) (s, a) = #mhl($arg max_(a in cal(A))$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhlg($v_(pi_k) (s')$)] .
+   $ <eq-policy-improvement>
+   #strong[策略改进定理（Policy Improvement Theorem）]保证：因对任意 $s$ 有 $q_(pi_k) (s, pi_(k + 1)(s)) = max_a q_(pi_k) (s, a) gt.eq sum_a pi_k (a divides s) q_(pi_k) (s, a) = v_(pi_k) (s)$，即 $(cal(T)^(pi_(k + 1))_V v_(pi_k))(s) gt.eq v_(pi_k) (s)$，由于 $cal(T)^(pi_(k + 1))_V$ 的权重 $pi_(k + 1)(a divides s) p(s', r divides s, a)$ 非负，该算子保序（$V lt.eq V'$ 蕴含 $cal(T)^(pi_(k + 1))_V V lt.eq cal(T)^(pi_(k + 1))_V V'$），反复迭代可得 $v_(pi_(k + 1)) = lim_(m arrow.r oo) (cal(T)^(pi_(k + 1))_V)^m v_(pi_k) gt.eq v_(pi_k)$。由于有限 MDP 的确定性平稳策略总数 $|cal(A)|^(|cal(S)|)$ 有限，交替执行“策略评估（@eq-dp-policy-eval-v）$arrow.r$ 策略改进（@eq-policy-improvement）”必在有限步内收敛于满足贝尔曼最优方程的最优价值 $v_star$ 与最优策略 $pi_star$。
+
+3. #strong[值迭代算法（Value Iteration，基于贝尔曼最优算子 $cal(T)^star_V$ 直接估计 $v_star$）]：
+   策略迭代在每一外层循环中都需要等待内层策略评估（@eq-dp-policy-eval-v）无穷步迭代收敛到精确 $v_(pi_k)$，计算开销较大。若将策略评估过程#strong[截断为仅执行一步更新]，并立即与策略改进（@eq-policy-improvement）的 $max_a$ 算子合并，则等价于直接对#link(<thm-5.7>)[定理 5.7] 的 $v_star arrow.r v_star$ 贝尔曼最优展开方程（@eq-opt-explicit-vv）应用 Banach 不动点迭代，更新律为：
+   $
+     #eqbox([$ V_(k + 1) (s) arrow.l (cal(T)^star_V V_k)(s) = #mhl($max_(a in cal(A))$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhlg($V_k (s')$)], quad forall s in cal(S) $])
+   $ <eq-value-iteration>
+   当迭代满足后验停止准则 $max_(s in cal(S)) |V_(k + 1) (s) - V_k (s)| < frac(1 - gamma, gamma) epsilon$ 时，由 @eq-fixed-point-error-bound 有 $norm(V_(k + 1) - v_star)_oo < epsilon$。随后以 $V_(k + 1)$ 代替 $v_star$ 代入 $q_star arrow.r v_star$ 展开式（#link(<thm-5.6>)[定理 5.6]）提取贪心策略：
+   $
+     pi(s) in #mhl($arg max_(a in cal(A))$) sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhlg($V_(k + 1) (s')$)] .
+   $ <eq-vi-extract-policy>
+   该策略满足 $norm(v_pi - v_star)_oo lt.eq frac(2 gamma epsilon, 1 - gamma)$（Singh & Yee, 1994）；由于有限 MDP 中各次优确定性策略与 $v_star$ 的差距有正下界，$epsilon$ 足够小时 $pi$ 即为最优策略。
+
+=== 动作价值的不动点迭代估计（$q_pi$ 迭代评估与 $Q$-值迭代算法）
+<sec-dp-action-value>
+与状态价值完全对称，若直接在状态-动作空间 $cal(S) times cal(A)$ 上应用算子 $cal(T)^pi_Q$ 与 $cal(T)^star_Q$（@eq-q-bellman-operators），则可得到动作价值的两类不动点估计算法：
+
+1. #strong[动作价值迭代策略评估（$Q$-Policy Evaluation，估计固定策略动作价值 $q_pi$）]：
+   依据#link(<thm-4.4>)[定理 4.4] 的 $q_pi arrow.r q_pi$ 展开方程（@eq-exp-explicit-qq），对所有 $(s, a) in cal(S) times cal(A)$ 迭代更新：
+   $
+     #eqbox([$ Q_(k + 1) (s, a) arrow.l (cal(T)^pi_Q Q_k)(s, a) = sum_(s', r) p(s', r divides s, a) [r + gamma sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($Q_k (s', a')$)] $])
+   $ <eq-dp-policy-eval-q>
+
+2. #strong[动作价值迭代算法（$Q$-Value Iteration，基于 $q_star arrow.r q_star$ 直接估计 $q_star$）]：
+   依据#link(<thm-5.8>)[定理 5.8] 的 $q_star arrow.r q_star$ 贝尔曼最优展开方程（@eq-opt-explicit-qq），直接应用压缩算子 $cal(T)^star_Q$ 迭代：
+   $
+     #eqbox([$ Q_(k + 1) (s, a) arrow.l (cal(T)^star_Q Q_k)(s, a) = sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) [r + gamma #mhl($max_(a' in cal(A))$) #mhlg($Q_k (s', a')$)] $])
+   $ <eq-q-value-iteration>
+   一旦 $Q_k$ 收敛于唯一不动点 $q_star$，提取最优策略无需再查询环境模型 $p(s', r divides s, a)$，只需直接做点态最大化 $pi_star (s) in arg max_(a in cal(A)) q_star (s, a)$。#link(<sec-td-action-value>)[第 6.4 节]的 Q-Learning 是 @eq-q-value-iteration 在模型未知时的随机近似版本。
+
+#divider()
+
+== 基于蒙特卡洛（Monte Carlo）方法的价值估计（模型未知：完整轨迹采样）
+<sec-mc-estimation>
+当环境模型 $p(s', r divides s, a)$ 未知时，无法执行#link(<sec-dp-fixed-point>)[第 6.2 节]中的显式概率求和 $sum_(s', r) p(s', r divides s, a) [dot.op]$。#strong[蒙特卡洛（Monte Carlo, MC）方法]绕开一步贝尔曼递推方程，直接回到#link(<sec-value-functions>)[第 1.3 节]中价值函数的#strong[原始期望定义]（#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]）：
+$
+  v_pi (s) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s], #h(3em) q_pi (s, a) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s, A_t = a] .
+$
+在#strong[分幕式任务]（Episodic Tasks，每幕必在有限步 $T < oo$ 内到达终止状态）中，智能体遵循策略 $pi$ 与环境交互生成完整的一幕轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h, S_(T - 1), A_(T - 1), R_T)$。从轨迹末端 $t = T - 1$ 向起点 $t = 0$ 逆向递推 $G_t = R_(t + 1) + gamma G_(t + 1)$（初值 $G_T = 0$），即可在 $O(T)$ 时间内精确算出该幕轨迹每个时刻 $t$ 的真实观测回报 $G_t$，再应用#link(<prop-6.2>)[命题 6.2] 的蒙特卡洛样本均值估计期望。
+
+=== 状态价值的蒙特卡洛估计（首次访问型与每次访问型 MC 评估）
+<sec-mc-state-value>
+在同一幕轨迹 $tau$ 中，同一个状态 $s in cal(S)$ 可能在多个不同时间步被访问。根据对同一幕内重复访问样本的处理方式，状态价值的 MC 估计分为两类：
+
+1. #strong[首次访问型蒙特卡洛估计（First-Visit MC Prediction）]：
+   在每一幕轨迹中，仅记录状态 $s$ #strong[第一次出现]的时刻 $t_1 (s) = min {t gt.eq 0 : S_t = s}$ 所对应的折扣回报 $G_(t_1 (s))$，忽略该幕后续对 $s$ 的重复访问。以下按访问幕依次到达的流式协议理解：设在 $M$ 幕交互中共有 $N(s)$ 幕访问过状态 $s$，记第 $i$ 个访问 $s$ 的幕中的首次访问回报为 $G_s^((i))$，则状态价值估计量为：
+   $
+     #eqbox([$ hat(V)_pi^upright("FV") (s) eq.dot #mhl($frac(1, N(s)) sum_(i = 1)^(N(s))$) #mhlg($G_s^((i))$), #h(2em) upright("增量更新：") quad V(s) arrow.l V(s) + #mhl($frac(1, N(s))$) [#mhlg($G_(t_1 (s))$) - V(s)] $])
+   $ <eq-mc-first-visit-v>
+   #strong[理论性质]：不同幕的轨迹相互独立，且每个首次访问回报满足 $bb(E)[G_(t_1 (s)) divides S_(t_1 (s)) = s] = v_pi (s)$。由于 $N(s)$ 本身是随机变量，且与回报来自同一批轨迹，无偏性与方差须在给定样本量的条件下陈述：给定 $N(s) = n$ 后，这 $n$ 个回报条件独立同分布，由#link(<prop-6.2>)[命题 6.2] 得
+   $
+     bb(E)[hat(V)_pi^upright("FV") (s) divides N(s) = n] = v_pi (s), #h(2em) upright("Var")(hat(V)_pi^upright("FV") (s) divides N(s) = n) = upright("Var")(G_(t_1 (s)) divides N(s) = n) / n .
+   $
+   若采用“持续采样直到获得 $n$ 个访问 $s$ 的幕”的固定样本量协议，则无条件地有 $bb(E)[hat(V)_pi^upright("FV") (s)] = v_pi (s)$ 与方差 $upright("Var")(G_(t_1 (s))) \/ n$；若固定总幕数 $M$ 而令 $N(s)$ 随机，则只能使用上述条件结论。若 $s$ 以概率 $1$ 被无限次访问，则 $N(s) arrow.r oo$，估计量由强大数定律以概率 $1$ 收敛于 $v_pi (s)$。
+
+2. #strong[每次访问型蒙特卡洛估计（Every-Visit MC Prediction）]：
+   将所有幕中访问状态 $s$ 的#strong[全部时间步]对应的回报均纳入样本均值计算（每访问一次计数器 $N(s) arrow.l N(s) + 1$，并按 $V(S_t) arrow.l V(S_t) + frac(1, N(S_t)) [G_t - V(S_t)]$ 或常步长 $alpha$ 更新）。由于同一幕内先后两次访问 $s$ 的回报共享后续轨迹奖励，样本之间相关，每次访问估计量在有限样本下有偏；当 $N(s) arrow.r oo$ 时偏差趋于零，估计量同样以概率 $1$ 收敛于 $v_pi (s)$。Singh & Sutton (1996) 指出，样本较少时每次访问估计的均方误差常低于首次访问估计。
+
+3. #strong[关键局限：为何无模型控制不能仅估计状态价值 $V(s)$？]
+   在环境模型 $p(s', r divides s, a)$ 已知时，拥有状态价值 $v_pi (s)$ 即可通过 @eq-policy-improvement 的单步向前看（One-step Lookahead）选出贪心动作；但在#strong[无模型设定]下，因 $p(s', r divides s, a)$ 未知，即使精确估出 $V(s) = v_pi (s)$，智能体也无法计算 $arg max_a bb(E)[R_(t + 1) + gamma V(S_(t + 1)) divides S_t = s, A_t = a]$。因此，无模型策略控制#strong[必须直接估计动作价值 $Q(s, a)$]，从而免模型地通过 $arg max_a Q(s, a)$ 直接选取最优动作。
+
+=== 动作价值的蒙特卡洛估计与策略控制（MCES、$epsilon$-贪心与重要性采样）
+<sec-mc-action-value>
+1. #strong[动作价值的蒙特卡洛增量估计（估计 $q_pi (s, a)$）]：
+   将统计对象从状态 $s$ 细化为状态-动作对 $(s, a) in cal(S) times cal(A)$。当轨迹在时刻 $t$ 经历 $(S_t = s, A_t = a)$（首次访问或每次访问）并观测到完整回报 $G_t$ 时，计数器 $N(s, a) arrow.l N(s, a) + 1$，更新公式为（在策略控制中常取衰减步长 $alpha_k = 1 \/ N(s, a)$ 或常步长 $alpha$）：
+   $
+     #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [#mhlg($G_t$) - Q(S_t, A_t)] $])
+   $ <eq-mc-q-update>
+
+2. #strong[探索性困境与同轨策略蒙特卡洛控制（MCES 与 On-Policy $epsilon$-Greedy MC Control）]：
+   若策略 $pi$ 是确定性策略，则在状态 $s$ 下智能体永远只会执行单一动作 $a = pi(s)$，其余动作 $a' eq.not pi(s)$ 永远无法被采样，$Q(s, a')$ 的估计将停滞在初值。为保证所有状态-动作对 $(s, a)$ 均被无限次访问（持续探索，Continual Exploration），有两类经典解法：
+   - #strong[探索性出发蒙特卡洛（MC with Exploring Starts, MCES）]：假设每一幕的初始状态-动作对 $(S_0, A_0)$ 在 $cal(S) times cal(A)$ 上的每个取值均以正概率被选中，此后遵循确定性贪心策略 $pi(s) in arg max_a Q(s, a)$，每幕结束后按 @eq-mc-q-update 更新 $Q$ 并重新贪心化。MCES 收敛到 $q_star$ 在一般情形下尚无完整证明（Sutton & Barto 第 2 版第 5.3 节将其列为开放问题）。
+   - #strong[同轨策略 $epsilon$-贪心蒙特卡洛控制（On-Policy $epsilon$-Greedy MC Control）]：取消不切实际的探索性出发假设，令策略 $pi$ 为软性（$epsilon$-soft）策略：以 $1 - epsilon$ 概率选择当前贪心动作 $a^star = arg max_(a') Q(s, a')$，以 $epsilon$ 概率在全部 $|cal(A)|$ 个动作中均匀随机探索：
+     $
+       pi(a divides s) = cases(
+         1 - epsilon + frac(epsilon, |cal(A)|) \, & upright("若 ") a = arg max_(a' in cal(A)) Q(s, a') \,,
+         frac(epsilon, |cal(A)|) \, & upright("若 ") a eq.not arg max_(a' in cal(A)) Q(s, a') .
+       )
+     $ <eq-epsilon-greedy-policy>
+     对任意 $epsilon$-软策略 $pi$，关于 $q_pi$ 的 $epsilon$-贪心策略 $pi'$ 满足 $v_(pi') (s) gt.eq v_pi (s)$（策略改进定理在 $epsilon$-软策略类中的推广，Sutton & Barto 第 5.4 节），固定 $epsilon$ 时的极限是 $epsilon$-软策略类中的最优策略，而非 $pi_star$。若探索率按#strong[无限探索且渐近贪心（GLIE，Greedy in the Limit with Infinite Exploration，如 $epsilon_k = 1 \/ k$）]条件衰减，且所有 $(s, a)$ 被无限次访问、按各 $(s, a)$ 访问次数定义的步长 $alpha_k (s, a)$ 满足 Robbins-Monro 条件（@eq-rm-step-conditions），则同轨表格型 $epsilon$-软 MC 控制的 $Q$ 以概率 $1$ 收敛于 $q_star$；@eq-mc-q-update 取常步长 $alpha$ 时不满足 $sum alpha_k^2 < oo$，不在此结论之内。
+
+3. #strong[离轨策略蒙特卡洛估计与重要性采样（Off-Policy MC via Importance Sampling）]：
+   若用具有充分探索性的#strong[行为策略（Behavior Policy）] $b(a divides s)$ 与环境交互生成轨迹，同时希望评估或优化另一个#strong[目标策略（Target Policy）] $pi(a divides s)$（满足覆盖假设：凡 $pi(a divides s) > 0$ 必有 $b(a divides s) > 0$），则直接对 $b$ 采样的回报 $G_t$ 求平均会得到 $q_b (s, a)$ 而非 $q_pi (s, a)$。
+   根据链式法则，给定 $S_t, A_t$ 后后续轨迹 $tau_(t + 1 : T) = (S_(t + 1), A_(t + 1), dots.h, S_T)$ 在目标策略 $pi$ 与行为策略 $b$ 下的条件概率之比中，#strong[未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$ 在分子分母中完全约消]，从而得到完全不依赖环境模型的#strong[重要性采样比（Importance Sampling Ratio）]：
+   $
+     rho_(t + 1 : T - 1) eq.dot frac(product_(k = t + 1)^(T - 1) pi(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k)), product_(k = t + 1)^(T - 1) b(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k))) = #mhl($product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$) .
+   $ <eq-importance-sampling-ratio>
+   利用修正后的无偏回报样本 $rho_(t + 1 : T - 1) G_t$（满足 $bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t = s, A_t = a] = q_pi (s, a)$），可构造#strong[普通重要性采样（Ordinary IS，无偏但方差可能无界）]与#strong[加权重要性采样（Weighted IS，有偏但偏差随样本数增加趋于零；回报有界时方差有界）]两类动作价值估计量：
+   $
+     hat(Q)_pi^upright("OIS") (s, a) = frac(1, N(s, a)) sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), #h(2.5em) hat(Q)_pi^upright("WIS") (s, a) = frac(sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$)) .
+   $ <eq-mc-ois-wis>
+
+#divider()
+
+== 基于随机近似的时序差分（TD）估计（模型未知：采样 + 自举）
+<sec-td-estimation>
+同轨蒙特卡洛的完整回报在首次访问协议下无偏，但存在两项固有缺陷：（1）必须等待整幕交互终止（$t = T$）后才能更新，无法应用于无终止状态的持续性任务（Continuing Tasks，$T = oo$）；（2）整幕回报 $G_t = R_(t + 1) + gamma R_(t + 2) + dots.h.c + gamma^(T - t - 1) R_T$ 累加了多达 $T - t$ 步的环境与策略随机性，方差随幕长增长；在离轨设定下，重要性采样比连乘（@eq-importance-sampling-ratio）还可使普通 IS 估计量方差无界。
+
+#strong[时序差分学习（Temporal-Difference Learning, TD）]将#link(<sec-bellman-exp-cond>)[第 3 章]与#link(<sec-bellman-opt>)[第 5 章]的条件期望形式贝尔曼方程（自举思想）与#link(<sec-robbins-monro-theory>)[第 6.1 节]的 Robbins-Monro 随机近似理论（采样求根）结合：以单步转移样本替代条件期望，并用当前估计自举后继价值，从而在模型未知时逐步在线更新价值估计。
+
+=== 状态价值的时序差分估计（TD(0)、$n$-步 TD 与 TD($lambda$)）
+<sec-td-state-value>
+1. #strong[从 Robbins-Monro 随机近似导出 TD(0) 状态价值估计算法]：
+   根据#link(<thm-3.3>)[定理 3.3] 的状态价值贝尔曼期望方程（条件期望形式 @eq-bellman-exp-vv），真实状态价值 $v_pi (s)$ 满足：
+   $
+     v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_pi (S_(t + 1))$) divides S_t = s] .
+   $
+   将其改写为#link(<sec-robbins-monro-theory>)[第 6.1 节]的 Robbins-Monro 求根方程（@eq-rm-root-problem）：
+   $
+     g(v_pi (s)) eq.dot v_pi (s) - bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s] = 0 .
+   $ <eq-td-rm-root>
+   在交互时刻 $t$，智能体从状态 $S_t = s$ 采样一步转移获得观测样本 $(R_(t + 1), S_(t + 1))$。由于真值 $v_pi (S_(t + 1))$ 未知，用当前维护的价值估计表 $V(S_(t + 1))$ #strong[自举（Bootstrap）]替代 $v_pi (S_(t + 1))$，构造出单步采样目标（#strong[TD Target]）与带噪残差观测（其负值定义为#strong[时序差分误差，TD Error $delta_t$]）：
+   $
+     y_t^upright("TD") eq.dot #mhl($R_(t + 1) + gamma #mhlg($V(S_(t + 1))$)$), #h(2.5em) delta_t eq.dot y_t^upright("TD") - V(S_t) = #mhl($R_(t + 1) + gamma #mhlg($V(S_(t + 1))$) - V(S_t)$) .
+   $ <eq-td-target-error>
+   将带噪观测 $tilde(g)_t = - delta_t$ 代入 Robbins-Monro 随机近似迭代式（@eq-robbins-monro-update），得到 #strong[TD(0) 状态价值估计算法]：
+   $
+     #eqbox([$ V(S_t) arrow.l V(S_t) + #mhl($alpha_t$) delta_t = V(S_t) + #mhl($alpha_t$) [R_(t + 1) + gamma #mhlg($V(S_(t + 1))$) - V(S_t)] $])
+   $ <eq-td0-v-update>
+   #strong[收敛性定理]：在有限表格型 MDP 中，若每个状态被无限次访问且步长序列满足 Robbins-Monro 条件 $sum_t alpha_t (s) = oo, sum_t alpha_t^2 (s) < oo$，则由随机近似与随机不动点压缩理论（Jaakkola et al., 1994; Tsitsiklis, 1994），TD(0) 迭代序列 $V_t$ 以概率 $1$ 收敛于真实状态价值 $v_pi$。
+
+2. #strong[$n$-步时序差分（$n$-Step TD）与 TD($lambda$)：连接 MC 与 TD(0) 的连续谱]：
+   TD(0) 仅向前采样 $1$ 步即用 $V(S_(t + 1))$ 自举，而蒙特卡洛（MC）向前采样直到终止（$oo$ 步）。将回报一步递推式（@eq-return-recursion）连续展开 $n$ 步并用 $V(S_(t + n))$ 截断自举，即得到 #strong[$n$-步时序差分回报（$n$-Step Return）]及其更新公式：
+   $
+     G_(t : t + n) eq.dot #mhl($sum_(k = 1)^n gamma^(k - 1) R_(t + k)$) + gamma^n #mhlg($V(S_(t + n))$), #h(2em) V(S_t) arrow.l V(S_t) + alpha [G_(t : t + n) - V(S_t)] .
+   $ <eq-n-step-td>
+   进一步对所有 $n in {1, 2, dots.h}$ 的 $n$-步回报以几何权重 $(1 - lambda) lambda^(n - 1)$（其中 $lambda in [0, 1]$）做指数加权平均，即构成 #strong[TD($lambda$) 的 $lambda$-回报]：
+   $
+     G_t^lambda eq.dot #mhl($(1 - lambda) sum_(n = 1)^oo lambda^(n - 1)$) #mhlg($G_(t : t + n)$) .
+   $ <eq-td-lambda-return>
+   当 $lambda = 0$ 时，$G_t^0 = G_(t : t + 1) = R_(t + 1) + gamma V(S_(t + 1))$，完全退化为单步 TD(0)（低方差、有初始自举偏差）；当 $lambda = 1$ 时，$G_t^1 = G_t$，完全退化为无偏的蒙特卡洛估计（无偏、高方差）。因此 $lambda in [0, 1]$ 提供了在#strong[随机近似自举]与#strong[蒙特卡洛采样]之间平滑调节偏差-方差权衡（Bias-Variance Trade-off）的参数。在分幕任务中，约定 $t + n gt.eq T$ 时 $G_(t : t + n) = G_t$，上式等价于 $G_t^lambda = (1 - lambda) sum_(n = 1)^(T - t - 1) lambda^(n - 1) G_(t : t + n) + lambda^(T - t - 1) G_t$。
+
+   $lambda$-回报需要等待未来 $n$ 步数据（前向视角）。在线实现采用资格迹（Eligibility Trace）的后向视角：对每个状态维护 $z_t (s) = gamma lambda z_(t - 1) (s) + bb(1)[S_t = s]$（$z_(-1) = 0$），每步以同一个 $delta_t$ 更新所有状态：
+   $
+     #eqbox([$ V(s) arrow.l V(s) + #mhl($alpha$) delta_t #mhlb($z_t (s)$), quad forall s in cal(S) $])
+   $ <eq-td-lambda-trace>
+   在分幕、恒定步长、采用上述累积资格迹且一幕内保持价值表 $V$ 不变的离线实现中，所有更新推迟到幕末执行，后向视角的累计更新量与基于同一冻结 $V$ 计算的前向 $lambda$-回报累计更新量相等（Sutton & Barto 第 2 版第 12.4 节）；若一幕内价值表随时间变化，二者一般只近似相等。
+
+=== 动作价值的时序差分估计与控制
+<sec-td-action-value>
+将 Robbins-Monro 随机近似应用于#link(<thm-3.4>)[定理 3.4]（$q_pi arrow.r q_pi$ 贝尔曼期望方程）与#link(<thm-5.4>)[定理 5.4]（$q_star arrow.r q_star$ 贝尔曼最优方程）的条件期望形式，可导出无模型动作价值估计与控制的主要算法：
+
+1. #strong[SARSA 算法（同轨策略 On-Policy TD 控制，对应 $q_pi arrow.r q_pi$ 全采样随机近似）]：
+   由#link(<thm-3.4>)[定理 3.4] 的动作价值贝尔曼期望方程（条件期望形式 @eq-bellman-exp-qq）：
+   $
+     q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1), A_(t + 1)) [R_(t + 1) + gamma #mhlg($q_pi (S_(t + 1), A_(t + 1))$) divides S_t = s, A_t = a] .
+   $
+   智能体从 $(S_t, A_t)$ 出发，与环境交互获得 $(R_(t + 1), S_(t + 1))$，并继续按当前策略 $pi$（如 $epsilon$-贪心策略）采样出下一时刻的实际执行动作 $A_(t + 1) tilde.op pi(dot.op divides S_(t + 1))$，组成五元组 $(S_t, A_t, R_(t + 1), S_(t + 1), A_(t + 1))$（SARSA 之名由此而来）。以单样本 $R_(t + 1) + gamma Q(S_(t + 1), A_(t + 1))$ 近似上述三变量联合条件期望，做 Robbins-Monro 更新：
+   $
+     #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma #mhlg($Q(S_(t + 1), A_(t + 1))$) - Q(S_t, A_t)] $])
+   $ <eq-sarsa-update>
+   SARSA 评估的是正在执行的策略；将其与 $epsilon$-贪心改进交替执行即为同轨控制。表格型 SARSA 收敛于 $q_star$ 的条件为：所有 $(s, a)$ 被无限次访问、各 $(s, a)$ 的步长满足 @eq-rm-step-conditions，且策略满足 GLIE 条件（Singh et al., 2000）。
+
+2. #strong[期望 SARSA 算法（Expected SARSA，对应 $q_pi arrow.r q_pi$ 环境层采样 + 策略层精确期望）]：
+   回顾#link(<sec-cond-qq>)[第 3.4 节]对 @eq-bellman-exp-qq 的嵌套期望分解：$q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma bb(E)_(A_(t + 1) tilde.op pi) [q_pi (S_(t + 1), A_(t + 1))] divides S_t = s, A_t = a]$。虽然环境转移分布 $p(s', r divides s, a)$ 未知（必须通过采样 $(R_(t + 1), S_(t + 1))$ 做随机近似），但#strong[智能体自身的策略分布 $pi(a' divides S_(t + 1))$ 已知]。因此，无需像 SARSA 那样对下一动作 $A_(t + 1)$ 进行随机采样，而是直接对后继动作求精确期望：
+   $
+     #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma sum_(a' in cal(A)) #mhl($pi(a' divides S_(t + 1))$) #mhlg($Q(S_(t + 1), a')$) - Q(S_t, A_t)] $])
+   $ <eq-expected-sarsa-update>
+   #strong[优势]：Expected SARSA 消除了因随机采样 $A_(t + 1)$ 引入的策略层方差，在相同步长下比标准 SARSA 具有更低的估计方差与更高的稳定性，且既可作同轨评估/控制，也可自然用作离轨评估（令 $b$ 生成样本，目标策略 $pi$ 代入求和）。
+
+3. #strong[Q-Learning 算法（离轨策略 Off-Policy TD 控制，对应贝尔曼最优方程 $q_star arrow.r q_star$ 随机近似）]：
+   Watkins (1989) 提出的 Q-Learning 不再经过“评估 $q_pi$ 再改进 $pi$”的两步过程，而是直接对#link(<thm-5.4>)[定理 5.4] 的#strong[动作价值贝尔曼最优方程]（条件期望形式 @eq-opt-cond-qq）：
+   $
+     q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a]
+   $
+   应用 Robbins-Monro 随机近似：智能体按行为策略 $b$（如 $epsilon$-贪心）采样四元组 $(S_t, A_t, R_(t + 1), S_(t + 1))$，直接将后继状态的最大动作价值 $max_(a') Q(S_(t + 1), a')$ 作为自举目标：
+   $
+     #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($Q(S_(t + 1), a')$) - Q(S_t, A_t)] $])
+   $ <eq-td-control>
+   #strong[$max$ 与 $bb(E)$ 的内外顺序及离轨性]：对比状态价值与动作价值贝尔曼最优方程（#link(<thm-5.3>)[定理 5.3]，@eq-opt-cond-vv；#link(<thm-5.4>)[定理 5.4]，@eq-opt-cond-qq）中最大化算子与条件期望算子的位置：
+   $
+     v_star (s) & = #mhl($max_(a in cal(A))$) #mhlb($bb(E)_(R_(t + 1), S_(t + 1))$) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a], \
+     q_star (s, a) & = #mhlb($bb(E)_(R_(t + 1), S_(t + 1))$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a] .
+   $ <eq-max-expectation-order>
+   - 在 $v_star$ 的方程中 $max_a$ 位于条件期望之外。朴素地复用同一条单步样本为各动作估值再取 $max_a$ 会引入最大化选择偏差，不能作为 $max_a bb(E)[dot.op]$ 的无偏插件；此外，即使已知 $v_star$，从 $v_star$ 选取贪心动作仍需一步模型或额外的环境信息。常规无模型最优控制因此直接估计 $q_star$。
+   - 在 $q_star$ 的方程中条件期望位于最外层，对给定的采样后继状态 $S_(t + 1) = s'$，$max_(a') Q(s', a')$ 只是查表求最大值。给定 $(S_t = s, A_t = a)$ 后，$(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 只由环境转移律决定，与生成轨迹的行为策略 $b$ 无关，后继动作也无需按目标策略采样，因此 Q-Learning 无需重要性采样即可离轨学习。
+   在有限 MDP、奖励有界、行为策略 $b$ 使所有 $(s, a)$ 被无限次访问，且按各 $(s, a)$ 访问次数定义的步长满足 Robbins-Monro 条件时，表格型 $Q(s, a)$ 以概率 $1$ 收敛于 $q_star (s, a)$（Watkins & Dayan, 1992），对行为策略 $b$ 无 GLIE 要求。
+
+4. #strong[最大化偏差（Maximization Bias）与 Double Q-Learning]：
+   在 Q-Learning（@eq-td-control）中，目标项使用带有随机估计误差的同一个价值表 $Q$ 同时完成#strong[选出最大动作]（$a^star = arg max_(a') Q(S_(t + 1), a')$）与#strong[评估该动作的价值]（$Q(S_(t + 1), a^star) = max_(a') Q(S_(t + 1), a')$）。由于 $max$ 是凸函数，即便每个动作的价值估计 $hat(Q)(s', a')$ 都是真值 $q_star (s', a')$ 的无偏估计（$bb(E)[hat(Q)(s', a')] = q_star (s', a')$），由 #strong[Jensen 不等式]必有：
+   $
+     #mhl($bb(E) [max_(a' in cal(A)) hat(Q)(s', a')]$) gt.eq #mhlb($max_(a' in cal(A)) bb(E) [hat(Q)(s', a')]$) = max_(a' in cal(A)) q_star (s', a') ,
+   $ <eq-maximization-bias>
+   即“#strong[最大值的期望大于期望的最大值]”，导致 Q-Learning 系统性地高估（Overestimate）动作价值。#strong[Double Q-Learning]（Hasselt, 2010）通过维护两份交替更新的估计器 $Q_1, Q_2$ 解耦动作选择与价值评估（每步以 $0.5$ 概率随机更新其中一个，如用 $Q_1$ 选出贪心动作 $a^star = arg max_(a') Q_1(S_(t + 1), a')$，再用另一份 $Q_2$ 评估其价值）：
+   $
+     Q_1 (S_t, A_t) arrow.l Q_1 (S_t, A_t) + alpha [R_(t + 1) + gamma #mhlg($Q_2 (S_(t + 1), #mhl($arg max_(a') Q_1 (S_(t + 1), a')$))$) - Q_1 (S_t, A_t)] ,
+   $ <eq-double-q-learning>
+   另一半步骤交换 $Q_1, Q_2$ 的角色。若 $Q_2$ 无偏且其评估误差与 $Q_1$ 的选择误差条件独立，则 $bb(E)[Q_2 (s', a^star)] = q_star (s', a^star) lt.eq max_(a') q_star (s', a')$，目标项不再系统性高估（可能出现轻微低估）。Double DQN 与 TD3 的 Clipped Double-Q 采用同一思路。
+
+5. #strong[从表格型随机近似到参数化函数近似（DQN 与随机梯度下降）]：
+   当状态空间 $cal(S)$ 为高维或连续空间时，用参数化函数 $hat(v)(s; bold(theta))$ 或 $hat(q)(s, a; bold(theta))$（如深度神经网络）近似价值函数。此时对均方 TD 误差 $cal(L)(bold(theta)) = 1 / 2 [y_t^upright("TD") - hat(q)(S_t, A_t; bold(theta))]^2$（将目标网络参数 $bold(theta)^-$ 视为固定常数，即半梯度 Semi-gradient）做随机梯度下降，即为 #strong[DQN（Deep Q-Network）] 的参数更新律：
+   $
+     bold(theta)_(t + 1) = bold(theta)_t + #mhl($alpha$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($hat(q)(S_(t + 1), a'; bold(theta)^-)$) - hat(q)(S_t, A_t; bold(theta)_t)] #mhlb($nabla_(bold(theta)) hat(q)(S_t, A_t; bold(theta)_t)$) .
+   $ <eq-dqn-update>
+   当取表格型独热特征表示（One-Hot Feature）时，$nabla_(bold(theta)) hat(q)(S_t, A_t; bold(theta)) = bold(e)_((S_t, A_t))$，@eq-dqn-update 精确退化为表格型 Q-Learning（@eq-td-control）。DQN 另以经验回放（Experience Replay）打破样本相关性，并周期性复制 $bold(theta)^- arrow.l bold(theta)$。
+
+   #strong[函数近似下的收敛边界]：上述 TD(0)、SARSA、Q-Learning 的以概率 $1$ 收敛结论均限于表格型表示。参数化以后，半梯度更新不再是任何固定目标函数的梯度下降。已知结论为：同轨线性 TD(0) 收敛到 TD 不动点，其误差不超过最优线性逼近误差的 $1 \/ (1 - gamma)$ 倍（Tsitsiklis & Van Roy, 1997）；函数近似、自举与离轨训练三者同时出现（#strong[致命三元组]，Deadly Triad）时，即使线性特征也可能发散（Baird 反例，1995）。DQN 等深度方法因此没有一般性收敛保证，稳定性依赖目标网络、经验回放等工程措施。
+
+#divider()
+
+== 三类估计方法的回溯结构对比
+<sec-estimation-comparison>
+综合#link(<sec-dp-fixed-point>)[第 6.2]--#link(<sec-td-estimation>)[6.4 节]，动态规划（DP）、蒙特卡洛（MC）与时序差分（TD）是强化学习价值估计的三类基本方法。三者在马尔可夫决策树上的回溯广度（Width）与深度（Depth）不同（见 @fig-dp-mc-td-backups），针对状态价值与动作价值的全部估计算法及统计特征汇总于 @tab-all-value-estimators。
+
+#figure(
+  grid(
+    columns: (1fr, 1fr, 1fr),
+    column-gutter: 4mm,
+    row-gutter: 3mm,
+    align: center + top,
+    text(size: 8.5pt)[*动态规划（DP）* \ 全宽 · 单步 · 精确期望 \ 自举 · 需模型 $p$],
+    text(size: 8.5pt)[*蒙特卡洛（MC）* \ 单轨 · 采样至终止 \ 不自举 · 免模型],
+    text(size: 8.5pt)[*时序差分（TD）* \ 单轨 · 单步采样 \ 自举 · 免模型],
+    diagram(
+      spacing: (5mm, 9mm),
+      node-stroke: 0.8pt + accent,
+      edge-stroke: 0.8pt + accent,
+      node((1.5, 0), [$V(S_t)$], radius: 15pt, fill: accent-soft),
+      node((0.5, 1), text(fill: white, size: 7pt)[$a_1$], radius: 7.5pt, fill: accent),
+      node((2.5, 1), text(fill: white, size: 7pt)[$a_2$], radius: 7.5pt, fill: accent),
+      edge((1.5, 0), (0.5, 1), "->", text(size: 7pt)[$pi$], label-side: right),
+      edge((1.5, 0), (2.5, 1), "->", text(size: 7pt)[$pi$], label-side: left),
+      ..((0, 1, 0), (1, 1, 1), (2, 2, 0), (3, 2, 1)).map(((x, i, side)) => (
+        node((x, 2), [$s'_#(x + 1)$], radius: 8.5pt, fill: hl-green-fill, stroke: 0.8pt + hl-green-stroke),
+        edge((if i == 1 { 0.5 } else { 2.5 }, 1), (x, 2), "->", text(size: 7pt)[$p$], label-side: if side == 0 { right } else { left }),
+      )).flatten(),
+    ),
+    diagram(
+      spacing: (5mm, 8mm),
+      node-stroke: 0.8pt + warn-stroke,
+      edge-stroke: 1.2pt + warn-stroke,
+      node((0, 0), [$V(S_t)$], radius: 15pt, fill: accent-soft, stroke: 0.8pt + accent),
+      node((0, 1), text(fill: white, size: 7pt)[$A_t$], radius: 7.5pt, fill: warn-stroke),
+      node((0, 2), text(size: 8pt)[$S_(t+1)$], radius: 11pt, fill: white),
+      node((0, 3), [$S_T$], shape: rect, fill: warn-soft, inset: 4pt),
+      edge((0, 0), (0, 1), "->", text(size: 7pt)[采样 $A_t$], label-side: left),
+      edge((0, 1), (0, 2), "->", text(size: 7pt)[$R_(t+1), S_(t+1)$], label-side: left),
+      edge((0, 2), (0, 3), "-->", text(size: 7pt)[直至终止，得 $G_t$], label-side: left),
+    ),
+    diagram(
+      spacing: (5mm, 9mm),
+      node-stroke: 0.8pt + hl-green-stroke,
+      edge-stroke: 1.2pt + hl-green-stroke,
+      node((0, 0), [$V(S_t)$], radius: 15pt, fill: accent-soft, stroke: 0.8pt + accent),
+      node((0, 1), text(fill: white, size: 7pt)[$A_t$], radius: 7.5pt, fill: hl-green-stroke),
+      node((0, 2), text(size: 8pt)[$V(S_(t+1))$], radius: 19pt, fill: hl-green-fill),
+      edge((0, 0), (0, 1), "->", text(size: 7pt)[采样 $A_t$], label-side: left),
+      edge((0, 1), (0, 2), "->", text(size: 7pt)[采样 $R_(t+1), S_(t+1)$], label-side: left),
+    ),
+  ),
+  caption: [三类价值估计方法的回溯结构：动态规划对一步内全部动作与后继状态精确求期望；蒙特卡洛沿单条轨迹采样到终止；时序差分采样一步后以 $V(S_(t+1))$ 自举],
+) <fig-dp-mc-td-backups>
+
+#figure(
+  caption: [状态价值（$v_pi, v_star$）与动作价值（$q_pi, q_star$）的估计算法、所依方程与更新公式汇总。表中 $bb(E)_p [f] eq.dot sum_(s', r) p(s', r divides s, a) f(s', r)$；“对象”列为每次更新所估计的价值函数，括注为外层 GPI 控制的极限],
+  text(size: 8.6pt, table(
+    columns: (24mm, 16mm, 29mm, 1fr),
+    align: (center + horizon, center + horizon, left + horizon, left + horizon),
+    table.header(
+      [估计方法],
+      [对象],
+      [算法与所依方程],
+      [迭代 / 增量更新公式],
+    ),
+    table.hline(),
+    table.cell(rowspan: 4)[#strong[不动点迭代] \ （DP） \ #link(<prop-6.1>)[命题 6.1] \ 需模型 \ 自举],
+    [$v_pi$], [迭代策略评估 \ @eq-exp-explicit-vv],
+    [$V_(k+1)(s) arrow.l sum_a pi(a divides s) bb(E)_p [r + gamma V_k (s')]$],
+    [$v_star$], [值迭代 \ @eq-opt-explicit-vv],
+    [$V_(k+1)(s) arrow.l max_a bb(E)_p [r + gamma V_k (s')]$],
+    [$q_pi$], [$Q$-策略评估 \ @eq-exp-explicit-qq],
+    [$Q_(k+1)(s, a) arrow.l bb(E)_p [r + gamma sum_(a') pi(a' divides s') Q_k (s', a')]$],
+    [$q_star$], [$Q$-值迭代 \ @eq-opt-explicit-qq],
+    [$Q_(k+1)(s, a) arrow.l bb(E)_p [r + gamma max_(a') Q_k (s', a')]$],
+    table.hline(stroke: 0.6pt + accent),
+    table.cell(rowspan: 4)[#strong[蒙特卡洛] \ （MC） \ #link(<prop-6.2>)[命题 6.2] \ 免模型 \ 不自举],
+    [$v_pi$], [首次 / 每次访问 MC \ @eq-v-def],
+    [$V(S_t) arrow.l V(S_t) + frac(1, N(S_t)) [G_t - V(S_t)]$ \ 首次访问无偏；每次访问渐近无偏],
+    [$q_pi$], [MCES \ @eq-q-def + GPI],
+    [$Q(S_t, A_t) arrow.l Q(S_t, A_t) + alpha [G_t - Q(S_t, A_t)]$ \ 再令 $pi arrow.l$ greedy$(Q)$；一般收敛性尚无完整证明],
+    [$q_pi$], [$epsilon$-软 MC \ @eq-q-def + GPI],
+    [$Q(S_t, A_t) arrow.l Q(S_t, A_t) + alpha [G_t - Q(S_t, A_t)]$ \ 再令 $pi arrow.l epsilon$-greedy$(Q)$ \ GLIE + RM 步长 + GPI 时 $Q arrow.r q_star$],
+    [$q_pi$], [离轨 MC（WIS） \ @eq-importance-sampling-ratio],
+    [$W = rho_(t+1:T-1)$，$C arrow.l C + W$ \ $Q(S_t, A_t) arrow.l Q(S_t, A_t) + frac(W, C) [G_t - Q(S_t, A_t)]$ \ WIS 有偏、渐近无偏],
+    table.hline(stroke: 0.6pt + accent),
+    table.cell(rowspan: 5)[#strong[随机近似] \ （TD） \ #link(<thm-6.1>)[定理 6.1] \ 免模型 \ 自举 \ 目标有偏],
+    [$v_pi$], [TD(0) \ @eq-bellman-exp-vv],
+    [$V(S_t) arrow.l V(S_t) + alpha [R_(t+1) + gamma V(S_(t+1)) - V(S_t)]$],
+    [$v_pi$], [$n$ 步 TD、TD($lambda$) \ @eq-n-step-td、@eq-td-lambda-trace],
+    [$V(S_t) arrow.l V(S_t) + alpha [G_(t:t+n) - V(S_t)]$ \ $V(s) arrow.l V(s) + alpha delta_t z_t (s)$],
+    [$q_pi$ \ GPI → $q_star$], [SARSA \ @eq-bellman-exp-qq],
+    [$Q(S_t, A_t) arrow.l Q(S_t, A_t) + alpha [R_(t+1)$ \ $quad + gamma Q(S_(t+1), A_(t+1)) - Q(S_t, A_t)]$],
+    [$q_pi$], [Expected SARSA \ @eq-bellman-exp-qq],
+    [$Q(S_t, A_t) arrow.l Q(S_t, A_t) + alpha [R_(t+1)$ \ $quad + gamma sum_(a') pi(a' divides S_(t+1)) Q(S_(t+1), a') - Q(S_t, A_t)]$],
+    [$q_star$], [Q-Learning \ @eq-opt-cond-qq],
+    [$Q(S_t, A_t) arrow.l Q(S_t, A_t) + alpha [R_(t+1)$ \ $quad + gamma max_(a') Q(S_(t+1), a') - Q(S_t, A_t)]$],
+  )),
+) <tab-all-value-estimators>
+
+#divider()
+
+// ============================================================
+//  第 7 章：方程结构定性、强化学习算法关联谱系与工程选型
+// ============================================================
+= 方程结构定性、强化学习算法关联谱系与工程选型
 <sec-algo-selection>
 
 == 四类递推算子的结构特征与计算复杂度
@@ -1228,13 +1654,13 @@ $
     [内层：$sum_(s', r) p(s', r divides s, a) [dot.op]$],
     [仅维护 $v$: \ $O(|cal(S)|)$],
     [$O(|cal(S)|^2 thin |cal(A)| thin |cal(R)|)$],
-    [$(v arrow.r q) compose (q arrow.r v)$： \ 先策略层后环境层],
+    [$(v arrow.r q) compose (q arrow.r v)$ \ 先策略层后环境层],
     [#strong[$q arrow.r q$]],
     [内层：$sum_(a') pi(a' divides s')$ ／ $max_(a')$],
     [外层：$sum_(s', r) p(s', r divides s, a) [dot.op]$],
     [仅维护 $q$: \ $O(|cal(S)| thin |cal(A)|)$],
     [$O(|cal(S)|^2 thin |cal(A)|^2 thin |cal(R)|)$],
-    [$(q arrow.r v) compose (v arrow.r q)$： \ 先环境层后策略层],
+    [$(q arrow.r v) compose (v arrow.r q)$ \ 先环境层后策略层],
   ),
 ) <tab-operator-complexity>
 
@@ -1242,56 +1668,85 @@ $
 
 #divider()
 
-== 从贝尔曼方程到经典求解算法
-<sec-classic-algorithms>
-强化学习的经典算法体系本质上是对不同形式贝尔曼方程的迭代求解或随机近似求解，其演化脉络与对应关系见 @fig-gpi-algorithms：
+== 贝尔曼方程结合期望估计算法导出强化学习算法的关联谱系
+<sec-rl-genealogy>
+将贝尔曼期望方程与贝尔曼最优方程、状态价值 $V$ 与动作价值 $Q$ 两类对象，以及#link(<sec-value-estimation>)[第 6 章]的三类期望估计方法（不动点迭代、蒙特卡洛样本均值、Robbins-Monro 随机近似）组合，再配合广义策略迭代（Generalized Policy Iteration, GPI）与参数化函数近似，可得到从表格型方法到深度强化学习（Deep RL）的主要算法。各估计方法结合贝尔曼期望 / 最优方程导出的状态价值与动作价值算法见 @fig-rl-genealogy，对应的更新公式见 @tab-all-value-estimators。
 
 #figure(
-  diagram(
-    spacing: (32mm, 10.5mm),
-    node-stroke: 0.8pt + accent,
-    edge-stroke: 0.8pt + accent,
-    node((0, 0), [*贝尔曼期望方程* \ 线性不动点 $v_pi = cal(T)^pi v_pi$ \ （第 3–4 章）], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 48mm),
-    node((1, 0), [*贝尔曼最优方程* \ 非线性不动点 $v_star = cal(T)^star v_star$ \ （第 5 章）], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 48mm),
-    edge((0, 0), (1, 0), "->", [单步贪心 $max_a$], label-side: left),
-    node((0, 1), [*动态规划策略评估 / 策略迭代* \ 已知模型 $p(s', r divides s, a)$ \ 展开式迭代 $v_pi arrow.r v_pi$ + 贪心改进], fill: white, corner-radius: 4pt, inset: 6pt, width: 52mm),
-    node((1, 1), [*动态规划价值迭代 (Value Iteration)* \ 已知模型 $p(s', r divides s, a)$ \ 展开式直接迭代 $v_star arrow.r v_star$], fill: white, corner-radius: 4pt, inset: 6pt, width: 52mm),
-    node((0, 2), [*SARSA / 时序差分评估 (TD)* \ 模型未知，单步采样 $(s, a, r, s', a')$ \ 条件期望式 $q_pi arrow.r q_pi$], fill: white, corner-radius: 4pt, inset: 6pt, width: 52mm),
-    node((1, 2), [*Q-Learning / DQN* \ 模型未知，单步采样 $(s, a, r, s')$ \ 条件期望式 $q_star arrow.r q_star$], fill: white, corner-radius: 4pt, inset: 6pt, width: 52mm),
-    edge((0, 0), (0, 1), "->", [显式展开 ($v_pi$)], label-side: right),
-    edge((1, 0), (1, 1), "->", [显式展开 ($v_star$)], label-side: left),
-    edge((0, 1), (1, 1), "->", [单步评估截断], label-side: left),
-    edge((0, 1), (0, 2), "-->", [采样替代期望 ($q_pi$)], label-side: right),
-    edge((1, 1), (1, 2), "-->", [采样替代期望 ($q_star$)], label-side: left),
-    edge((0, 2), (1, 2), "->", [后继动作取 $max_(a')$], label-side: left),
-  ),
-  caption: [贝尔曼方程体系与经典强化学习算法（动态规划与无模型时序差分）的演化对应关系],
-) <fig-gpi-algorithms>
+  {
+    set par(justify: false)
+    let L(body) = align(left, text(size: 7.6pt, body))
+    diagram(
+      spacing: (11mm, 6mm),
+      node-stroke: 0.75pt + accent,
+      edge-stroke: 0.7pt + accent,
+      node-inset: 4.5pt,
+      node-corner-radius: 3pt,
 
-+ #strong[策略迭代（Policy Iteration，基于 $v_pi arrow.r v_pi$ 与 $q_pi arrow.r v_pi$ 显式展开）]：交替执行#strong[策略评估]（利用#link(<thm-4.3>)[定理 4.3] 迭代计算当前策略的 $V_(k + 1) = cal(T)^pi V_k$ 直至收敛于 $v_pi$）与#strong[策略改进]（利用#link(<thm-4.2>)[定理 4.2] 由 $v_pi$ 展开计算 $q_pi (s, a)$，再按 $pi'(s) in arg max_a q_pi (s, a)$ 更新贪心策略）。
-+ #strong[价值迭代（Value Iteration，基于 $v_star arrow.r v_star$ 显式展开）]：将策略评估截断为单步更新，直接把#link(<thm-5.7>)[定理 5.7]（@eq-opt-explicit-vv）转化为不动点迭代公式：
-  $
-    V_(k + 1) (s) arrow.l #mhl($max_(a in cal(A))$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($V_k (s')$)] .
-  $ <eq-value-iteration>
-+ #strong[SARSA 与 Q-Learning（基于 $q_pi arrow.r q_pi$ 与 $q_star arrow.r q_star$ 条件期望采样）]：在环境模型 $p(s', r divides s, a)$ 未知的无模型（Model-Free）设定下，用智能体与环境交互采样到的单步转移样本 $(s, a, r, s', a')$ 近似替代#link(<thm-3.4>)[定理 3.4]（@eq-bellman-exp-qq）与#link(<thm-5.4>)[定理 5.4]（@eq-opt-cond-qq）右端的条件期望，以步长 $alpha in (0, 1]$ 做随机近似更新：
-  $
-    upright("SARSA：") quad & Q(s, a) arrow.l Q(s, a) + alpha [#mhl($r + gamma #mhlg($Q(s', a')$)$) - Q(s, a)], \
-    upright("Q-Learning：") quad & Q(s, a) arrow.l Q(s, a) + alpha [#mhl($r + gamma max_(a' in cal(A)) #mhlg($Q(s', a')$)$) - Q(s, a)] .
-  $ <eq-td-control>
+      // 列分组：只圈算法行，方程节点在框外
+      node(enclose: ((0, 2), (0, 4)), stroke: (dash: "dashed", paint: hl-blue-stroke, thickness: 0.6pt), fill: none, inset: 4pt, snap: false),
+      node(enclose: ((2, 2), (2, 4)), stroke: (dash: "dashed", paint: hl-amber-stroke, thickness: 0.6pt), fill: none, inset: 4pt, snap: false),
+
+      // 第 0 层：根
+      node((1, 0), text(size: 7.6pt)[*价值定义与回报递推*（第 1 章） \ $v_pi (s) = bb(E)[G_t divides S_t = s]$ \ $q_pi (s, a) = bb(E)[G_t divides S_t = s, A_t = a]$], fill: accent-soft, width: 46mm),
+
+      // 第 1 层：两类贝尔曼方程
+      node((0, 1), text(size: 7.6pt)[*贝尔曼期望方程*（第 3–4 章） \ $v_pi = cal(T)^pi_V v_pi, med q_pi = cal(T)^pi_Q q_pi$ \ 下方框内：预测 / 评估], fill: hl-blue-fill, stroke: 0.85pt + hl-blue-stroke, width: 52mm),
+      node((2, 1), text(size: 7.6pt)[*贝尔曼最优方程*（第 5 章） \ $v_star = cal(T)^star_V v_star, med q_star = cal(T)^star_Q q_star$ \ 下方框内：控制], fill: hl-amber-fill, stroke: 0.85pt + hl-amber-stroke, width: 52mm),
+      edge((1, 0), (0, 1), "->", text(size: 6.8pt)[固定 $pi$], label-side: right),
+      edge((1, 0), (2, 1), "->", text(size: 6.8pt)[$max_pi arrow.r max_a$], label-side: left),
+      edge((0, 1), (2, 1), "<->", stroke: (dash: "dashed", paint: muted, thickness: 0.6pt), text(size: 6.8pt)[$sum_a pi(a divides s) arrow.l.r max_a$], label-side: right),
+      edge((0, 1), (0, 2), "->", stroke: 0.6pt + hl-blue-stroke),
+      edge((2, 1), (2, 2), "->", stroke: 0.6pt + hl-amber-stroke),
+
+      // 第 2 层：不动点迭代（显式展开式）
+      node((1, 2), text(size: 7.6pt)[*方法一：不动点迭代*（6.2 节） \ $x_(k+1) = cal(T) x_k$ \ 模型已知 · 精确期望 · 自举], stroke: 0.9pt + accent, width: 40mm),
+      node((0, 2), L[• *迭代策略评估* $V_(k+1) = cal(T)^pi_V V_k$ \ • *$Q$-策略评估* $Q_(k+1) = cal(T)^pi_Q Q_k$ \ • 交替贪心改进：*策略迭代*], stroke: 0.6pt + hl-blue-stroke, width: 52mm),
+      node((2, 2), L[• *值迭代* $V_(k+1) = cal(T)^star_V V_k$ \ • *$Q$-值迭代* $Q_(k+1) = cal(T)^star_Q Q_k$ \ • 策略评估截断为一步即值迭代], stroke: 0.6pt + hl-amber-stroke, width: 52mm),
+      edge((1, 2), (0, 2), "->", text(size: 6.5pt)[期望 \ 展开式], label-side: right),
+      edge((1, 2), (2, 2), "->", text(size: 6.5pt)[最优 \ 展开式], label-side: left),
+
+      // 第 3 层：蒙特卡洛（直接采样价值定义，不经贝尔曼方程）
+      node((1, 3), text(size: 7.6pt)[*方法二：蒙特卡洛*（6.3 节） \ 样本均值 $hat(mu)_N$ · 完整回报 \ 直接采样价值定义 \ （不经贝尔曼方程，不自举）], stroke: 0.9pt + warn-stroke, width: 40mm),
+      node((0, 3), L[• *首次 / 每次访问 MC*：$v_pi$、$q_pi$ \ • *离轨 MC*：OIS / WIS（$rho_(t+1:T-1) G_t$）], stroke: 0.6pt + hl-blue-stroke, width: 52mm),
+      node((2, 3), L[• *MCES*：一般收敛性尚无完整证明 \ • *同轨 $epsilon$-软 MC 控制*：GLIE + RM \ #h(0.8em) 步长下 $Q arrow.r q_star$], stroke: 0.6pt + hl-amber-stroke, width: 52mm),
+      edge((1, 3), (0, 3), "->", stroke: 0.7pt + warn-stroke, text(size: 6.5pt)[评估], label-side: right),
+      edge((1, 3), (2, 3), "->", stroke: 0.7pt + warn-stroke, text(size: 6.5pt)[GPI \ 改进], label-side: left),
+
+      // 第 4 层：随机近似 TD（条件期望式）
+      node((1, 4), text(size: 7.6pt)[*方法三：随机近似*（6.4 节） \ $w arrow.l w + alpha_k (y_k - w)$ \ 模型未知 · 采样 + 自举], stroke: 0.9pt + hl-green-stroke, width: 40mm),
+      node((0, 4), L[• *TD(0)、$n$ 步 TD、TD($lambda$)*：$v_pi$ \ • *SARSA*：评估 $q_pi$；GLIE + GPI 下 \ #h(0.8em) 同轨控制 $Q arrow.r q_star$ \ • *Expected SARSA*：对 $A_(t+1)$ 求期望], stroke: 0.6pt + hl-blue-stroke, width: 52mm),
+      node((2, 4), L[• *Q-learning*：$Q$-值迭代的采样版 \ #h(0.8em) 离轨，所有 $(s, a)$ 无限次访问 \ • *Double Q-learning*：减小高估偏差], stroke: 0.6pt + hl-amber-stroke, width: 52mm),
+      edge((1, 4), (0, 4), "->", stroke: 0.7pt + hl-green-stroke, text(size: 6.5pt)[期望 \ 条件式], label-side: right),
+      edge((1, 4), (2, 4), "->", stroke: 0.7pt + hl-green-stroke, text(size: 6.5pt)[最优 \ 条件式], label-side: left),
+
+      // 第 5 层：函数近似延伸
+      node((0, 5), text(size: 7.6pt)[*函数近似 · Actor-Critic* \ Critic 以 TD / GAE 估计 $v_pi$ \ A2C / A3C / TRPO / PPO], fill: accent-soft, stroke: 0.6pt + accent, width: 52mm),
+      node((1, 5), text(size: 6.8pt, fill: muted)[致命三元组：函数近似 \ + 自举 + 离轨训练 \ 可致发散（6.4 节）], stroke: none, width: 40mm),
+      node((2, 5), text(size: 7.6pt)[*函数近似 · 价值式控制* \ DQN / Double / Dueling DQN：$q_star$ \ DDPG / TD3：$q_pi$ + Actor \ SAC：软 $q_pi$ + Actor], fill: accent-soft, stroke: 0.6pt + accent, width: 52mm),
+      edge((0, 4), (0, 5), "->", stroke: (dash: "dashed", paint: accent, thickness: 0.7pt), text(size: 6.5pt)[参数化 + 半梯度], label-side: left),
+      edge((2, 4), (2, 5), "->", stroke: (dash: "dashed", paint: accent, thickness: 0.7pt), text(size: 6.5pt)[参数化 + 半梯度], label-side: right),
+    )
+  },
+  caption: [强化学习算法关联谱系：左框为预测 / 评估类算法（对应贝尔曼期望方程），右框为控制类算法（对应贝尔曼最优方程或 GPI 外环）；中列三类期望估计方法分别作用于显式展开式（DP）、价值定义（MC，不经贝尔曼方程）与条件期望式（TD），最下行为函数近似延伸。右下节点按价值式控制谱系归类，DDPG / TD3 / SAC 的 Critic 求解的是（软）期望方程],
+) <fig-rl-genealogy>
+
+图中未列出两类状态价值算法：纯 $V$ 的蒙特卡洛控制在无模型时无法选取贪心动作（#link(<sec-mc-state-value>)[第 6.3.1 节]第 3 项）；无模型最优控制通常不对 $v_star$ 做采样自举而直接估计 $q_star$，结构原因见 @eq-max-expectation-order 及其后说明。
 
 #divider()
 
 == 工程算法选型与非马尔可夫状态修复建议
 <sec-engineering-guidelines>
-在实际系统建模与强化学习工程实现中，应根据#strong[环境模型是否已知]、#strong[状态-动作空间规模]及#strong[状态马尔可夫性假设是否成立]选择对应的方程形式与求解方案：
+在实际系统建模与强化学习工程实现中，应根据#strong[环境模型是否已知]、#strong[任务分幕特性与偏差-方差权衡]、#strong[状态-动作空间规模]及#strong[状态马尔可夫性假设是否成立]选择对应的方程形式与求解方案：
 
 + #strong[环境模型 $p(s', r divides s, a)$ 完全已知（规划与动态规划场景）]：
-  - #strong[优先选用显式展开形式与 $v arrow.r v$ 递推（#link(<thm-4.3>)[定理 4.3]、#link(<thm-5.7>)[定理 5.7]）]：当转移概率已知时，维护状态价值 $v(s)$ 仅需 $O(|cal(S)|)$ 存储空间，比维护 $q(s, a)$ 节省 $|cal(A)|$ 倍内存。在求得最优状态价值 $v_star$ 后，仅需在在线决策时通过一次 $q_star arrow.r v_star$ 展开（#link(<thm-5.6>)[定理 5.6]）即可恢复最优贪心动作 $pi_star (s) in arg max_a [r(s, a) + gamma sum_(s') p(s' divides s, a) v_star (s')]$。
-  - #strong[矩阵求逆解析解与不动点迭代的边界]：在固定策略评估中，当状态数 $|cal(S)| lt.tilde 10^3$ 时，可直接构造 @eq-matrix-bellman 的线性方程组 $(I - gamma P_pi) v_pi = r_pi$ 通过高斯消元或 LU 分解求精确解析解；当 $|cal(S)|$ 较大且转移矩阵 $P_pi$ 稀疏时，应采用基于贝尔曼期望算子 $cal(T)^pi$ 的迭代策略评估，将单轮开销降至与非零转移边数成正比。
+  - #strong[优先选用显式展开形式与 $v arrow.r v$ 不动点递推（#link(<thm-4.3>)[定理 4.3]、#link(<thm-5.7>)[定理 5.7]）]：当转移概率已知时，维护状态价值 $v(s)$ 仅需 $O(|cal(S)|)$ 存储空间，比维护 $q(s, a)$ 节省 $|cal(A)|$ 倍内存。在通过值迭代（@eq-value-iteration）或策略迭代求得最优状态价值 $v_star$ 后，仅需在在线决策时通过一次 $q_star arrow.r v_star$ 展开（#link(<thm-5.6>)[定理 5.6]）即可恢复最优贪心动作 $pi_star (s) in arg max_a [r(s, a) + gamma sum_(s') p(s' divides s, a) v_star (s')]$。
+  - #strong[矩阵求逆解析解与不动点迭代的边界]：在固定策略评估中，当状态数 $|cal(S)| lt.tilde 10^3$ 时，可直接构造 @eq-matrix-bellman 的线性方程组 $(I - gamma P_pi) v_pi = r_pi$ 通过高斯消元或 LU 分解求精确解析解；当 $|cal(S)|$ 较大且转移矩阵 $P_pi$ 稀疏时，应采用基于贝尔曼期望算子 $cal(T)^pi_V$ 的迭代策略评估，将单轮开销降至与非零转移边数成正比。
 
 + #strong[环境模型未知、仅能通过交互采样获取轨迹（无模型强化学习场景）]：
-  - #strong[必须选用条件期望形式与 $q arrow.r q$ 递推（#link(<thm-3.4>)[定理 3.4]、#link(<thm-5.4>)[定理 5.4]）]：在无模型设定下，智能体无法访问 $p(s', r divides s, a)$。若仅估计状态价值 $v(s)$，即使获得了准确的 $v_star$，也无法在不依赖 $p(s', r divides s, a)$ 的情况下计算 $arg max_a bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma v_star (S_(t + 1)) divides s, a]$ 来选出动作。反之，$q arrow.r q$ 的条件期望形式将环境转移期望置于最外层，可直接用单步交互样本 $(s, a, r, s')$ 构造 @eq-td-control 的无偏时序差分目标，并通过 $arg max_a Q(s, a)$ 直接实现免模型控制。
-  - #strong[高维或连续空间的神经网络算子近似]：当 $|cal(S)|$ 或 $|cal(A)|$ 为高维或连续空间时，表格型存储与显式求和失效，需将 @eq-td-control 中的时序差分残差转化为均方误差损失函数（如 DQN），并在连续动作空间下配合参数化策略网络近似 $max_a Q(s, a)$ 算子（如 DDPG、TD3、SAC 等 Actor-Critic 架构）。
+  - #strong[蒙特卡洛（MC）与时序差分（TD）的权衡选型]：在无终止状态的持续性任务（$T = oo$）或幕长极长的任务中，必须采用基于自举的时序差分方法（TD / SARSA / Q-Learning）；在短幕长、奖励稀疏或状态表征存在轻微非马尔可夫性的分幕任务中，不依赖马尔可夫自举假设的蒙特卡洛回报（或高 $lambda$ 的 TD($lambda$) / GAE($lambda$)）能有效避免自举偏差的累积放大。
+  - #strong[同轨控制与离轨控制的选用]：当允许使用经验回放池（Experience Replay）复用历史样本追求高样本效率时，可选用离轨价值式控制：Q-Learning / DQN 基于标准 $q_star arrow.r q_star$，DDPG / TD3 基于 $q_pi$ 的期望方程与确定性策略梯度，SAC 基于软贝尔曼期望方程与熵正则策略目标；当在线交互过程本身对探索期的安全性敏感（如机器人实机控制，需考虑 $epsilon$-贪心探索带来的真实风险）时，应选用忠实评估实际执行策略的同轨算法（SARSA / Expected SARSA / PPO）。
+  - #strong[高维或连续空间的神经网络算子近似]：当 $|cal(S)|$ 或 $|cal(A)|$ 为高维或连续空间时，表格型存储与显式求和失效，需将 @eq-td-control 中的时序差分残差转化为均方误差损失函数（@eq-dqn-update，如 DQN），并在连续动作空间下配合参数化策略网络：DDPG / TD3 以确定性策略网络近似 $arg max_a Q(s, a)$，SAC 以随机策略最大化熵正则的软动作价值。
 
 + #strong[观测状态不满足马尔可夫性（非平稳或部分可观测场景）]：
-  - #strong[排查并修复状态表示缺陷]：全文全部贝尔曼递推均严格依赖#link(<lem-3>)[引理 3] 的条件独立化简 $p(g divides s', r, a, s) = p(g divides s')$（@eq-lem-3a）。若实际工程中的传感器观测 $O_t$ 丢失了关键历史信息（如仅输入单帧图像而无法判断运动速度，或奖励函数依赖历史累计状态），则 $G_(t + 1) cancel(perp) (S_t, A_t) divides S_(t + 1)$，直接套用一步贝尔曼方程会导致价值估计出现系统性偏差甚至震荡发散。此时必须在状态输入层拼接历史观测窗口（Frame Stacking）、引入循环/注意力状态编码器（RNN / Transformer）或显式增广历史统计量，使增广后的状态表征近似恢复马尔可夫性。
+  - #strong[排查并修复状态表示缺陷]：全文全部一步贝尔曼递推与 TD 自举均严格依赖#link(<lem-3>)[引理 3] 的条件独立化简 $p(g divides s', r, a, s) = p(g divides s')$（@eq-lem-3a）。若实际工程中的传感器观测 $O_t$ 丢失了关键历史信息（如仅输入单帧图像而无法判断运动速度，或奖励函数依赖历史累计状态），则 $G_(t + 1) cancel(perp) (S_t, A_t) divides S_(t + 1)$，直接套用一步贝尔曼方程会导致 TD 价值估计出现系统性偏差甚至震荡发散。此时必须在状态输入层拼接历史观测窗口（Frame Stacking）、引入循环/注意力状态编码器（RNN / Transformer）或显式增广历史统计量，使增广后的状态表征近似恢复马尔可夫性。
