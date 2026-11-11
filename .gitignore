@@ -6,5 +6,7 @@ bellman-*.md
 .DS_Store
 *.pdf
 .tmp/
+.planning/
 .audit/
 CLAUDE.md
+DESIGN.md
