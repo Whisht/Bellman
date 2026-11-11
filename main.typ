@@ -8,15 +8,15 @@
 #let accent = rgb("#1f4e79")
 #let accent-soft = accent.lighten(92%)
 #let accent-mid = accent.lighten(75%)
-#let muted = luma(120)
+#let muted = luma(110)
 
 // 公式局部高亮配色
 #let hl-amber-fill = rgb("#fff4d6")
-#let hl-amber-stroke = rgb("#d9822b")
+#let hl-amber-stroke = rgb("#a05d14")
 #let hl-blue-fill = rgb("#e6f0fa")
 #let hl-blue-stroke = rgb("#2b6cb0")
 #let hl-green-fill = rgb("#e6f6ec")
-#let hl-green-stroke = rgb("#2f855a")
+#let hl-green-stroke = rgb("#2b7952")
 #let warn-soft = rgb("#fff4e5")
 #let warn-stroke = rgb("#b25000")
 
@@ -270,6 +270,8 @@
   set text(font: sans-font, weight: "bold")
   it
 }
+#pagebreak()
+
 #text(font: sans-font, size: 16pt, weight: "bold", fill: accent.darken(25%))[目录]
 #v(0.3em)
 #outline(title: none, depth: 2, indent: 1.5em)
@@ -699,20 +701,25 @@ $ <eq-qq-reward-convention>
 - #strong[环境层转换（#link(<thm-3.2>)[定理 3.2]，$q_pi arrow.r v_pi$）]：环境根据转移分布 $p(dot.op, dot.op divides S_t, A_t)$ 跨时间步产生下一状态 $S_(t + 1)$ 与即时奖励 $R_(t + 1)$。
 
 #figure(
-  diagram(
-    spacing: (19mm, 12mm),
-    node-stroke: 0.9pt + accent,
-    edge-stroke: 0.8pt + accent,
-    node((0, 0), [*状态价值* \ $v_pi (S_t)$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 25mm),
-    node((1, 0), [*动作价值* \ $q_pi (S_t, A_t)$], fill: white, corner-radius: 4pt, inset: 6pt, width: 26mm),
-    node((2, 0), [*后继状态价值* \ $v_pi (S_(t+1))$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 27mm),
-    node((3, 0), [*后继动作价值* \ $q_pi (S_(t+1), A_(t+1))$], fill: white, corner-radius: 4pt, inset: 6pt, width: 31mm),
-    edge((0, 0), (1, 0), "->", [定理 3.1 \ 策略层 $pi$], label-side: left),
-    edge((1, 0), (2, 0), "->", [定理 3.2 \ 环境层 $p$], label-side: left),
-    edge((2, 0), (3, 0), "->", [定理 3.1 \ 策略层 $pi$], label-side: left),
-    edge((0, 0), (2, 0), "->", [定理 3.3（状态价值自递推 $v_pi arrow.r v_pi$：先策略层 $v_pi arrow.r q_pi$，再环境层 $q_pi arrow.r v_pi$）], bend: 32deg, label-side: left, stroke: (paint: accent, thickness: 0.8pt, dash: "dashed")),
-    edge((1, 0), (3, 0), "->", [定理 3.4（动作价值自递推 $q_pi arrow.r q_pi$：先环境层 $q_pi arrow.r v_pi$，再策略层 $v_pi arrow.r q_pi$）], bend: -32deg, label-side: right, stroke: (paint: accent, thickness: 0.8pt, dash: "dashed")),
-  ),
+  {
+    // 边标签统一降到 Diagram Label 层级（7.6pt），节点文字保持正文层级，
+    // 使整幅图的横向尺寸由节点行（109mm + 3×17mm = 160mm）决定而不被长标签撑宽。
+    let lb(body) = text(size: 7.6pt, body)
+    diagram(
+      spacing: (17mm, 12mm),
+      node-stroke: 0.9pt + accent,
+      edge-stroke: 0.8pt + accent,
+      node((0, 0), [*状态价值* \ $v_pi (S_t)$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 25mm),
+      node((1, 0), [*动作价值* \ $q_pi (S_t, A_t)$], fill: white, corner-radius: 4pt, inset: 6pt, width: 26mm),
+      node((2, 0), [*后继状态价值* \ $v_pi (S_(t+1))$], fill: accent-soft, corner-radius: 4pt, inset: 6pt, width: 27mm),
+      node((3, 0), [*后继动作价值* \ $q_pi (S_(t+1), A_(t+1))$], fill: white, corner-radius: 4pt, inset: 6pt, width: 31mm),
+      edge((0, 0), (1, 0), "->", lb[定理 3.1 \ 策略层 $pi$], label-side: left),
+      edge((1, 0), (2, 0), "->", lb[定理 3.2 \ 环境层 $p$], label-side: left),
+      edge((2, 0), (3, 0), "->", lb[定理 3.1 \ 策略层 $pi$], label-side: left),
+      edge((0, 0), (2, 0), "->", lb[定理 3.3（状态价值自递推 $v_pi arrow.r v_pi$：先策略层 $v_pi arrow.r q_pi$，再环境层 $q_pi arrow.r v_pi$）], bend: 32deg, label-side: left, stroke: (paint: accent, thickness: 0.8pt, dash: "dashed")),
+      edge((1, 0), (3, 0), "->", lb[定理 3.4（动作价值自递推 $q_pi arrow.r q_pi$：先环境层 $q_pi arrow.r v_pi$，再策略层 $v_pi arrow.r q_pi$）], bend: -32deg, label-side: right, stroke: (paint: accent, thickness: 0.8pt, dash: "dashed")),
+    )
+  },
   caption: [贝尔曼期望方程的两层随机性交替转换与四类递推复合结构],
 ) <fig-backup-expectation>
 
@@ -1677,15 +1684,15 @@ $
     set par(justify: false)
     let L(body) = align(left, text(size: 7.6pt, body))
     diagram(
-      spacing: (11mm, 6mm),
+      spacing: (6mm, 6mm),
       node-stroke: 0.75pt + accent,
       edge-stroke: 0.7pt + accent,
       node-inset: 4.5pt,
       node-corner-radius: 3pt,
 
       // 列分组：只圈算法行，方程节点在框外
-      node(enclose: ((0, 2), (0, 4)), stroke: (dash: "dashed", paint: hl-blue-stroke, thickness: 0.6pt), fill: none, inset: 4pt, snap: false),
-      node(enclose: ((2, 2), (2, 4)), stroke: (dash: "dashed", paint: hl-amber-stroke, thickness: 0.6pt), fill: none, inset: 4pt, snap: false),
+      node(enclose: ((0, 2), (0, 4)), stroke: (dash: "dashed", paint: hl-blue-stroke, thickness: 0.6pt), fill: none, inset: 2pt, snap: false),
+      node(enclose: ((2, 2), (2, 4)), stroke: (dash: "dashed", paint: hl-amber-stroke, thickness: 0.6pt), fill: none, inset: 2pt, snap: false),
 
       // 第 0 层：根
       node((1, 0), text(size: 7.6pt)[*价值定义与回报递推*（第 1 章） \ $v_pi (s) = bb(E)[G_t divides S_t = s]$ \ $q_pi (s, a) = bb(E)[G_t divides S_t = s, A_t = a]$], fill: accent-soft, width: 46mm),
