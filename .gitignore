@@ -1,3 +1,5 @@
+.planning/
+.tmp/
 *.mhtml
 *.json
 typst
