@@ -1,0 +1,22 @@
+你是一名工程师，当前目录里有几个体积很大的产物文件，`bin/` 下有对应的打印脚本。
+
+请按顺序执行下列命令，每次都读取命令的**完整**输出（不要用 head、tail 或 grep 截断），三条命令都执行完之后再回答问题：
+
+1. `bash bin/emit_buildlog.sh`
+2. `bash bin/emit_inventory.sh`
+3. `bash bin/emit_code_stats.sh`
+
+然后回答四个问题：
+
+- assets/build.log 中 `TRACE-ANCHOR=` 的值
+- assets/inventory.csv 中 SKU 为 `ZQ-0007341` 的那一行的 `qty` 值
+- assets/inventory.csv 中 `status` 为 `drift` 的行数
+- 第三条命令输出的字节数（`wc -lc` 的字节列）中，`codec/client/src/` 下三个 `.ts` 文件的字节数之和
+
+回答要求：
+
+- 本任务只有 Bash 工具可用，请全部用命令行完成。
+- 不要修改任何文件。
+- 不要访问网络。
+- 不要使用子代理。
+- 最后一条消息只输出一个 JSON 对象，键为 `trace_anchor`、`sku_qty`、`drift_rows`、`ts_bytes_total`。不要输出解释文字，不要使用代码块标记。

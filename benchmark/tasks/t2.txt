@@ -1,0 +1,17 @@
+你是一名工程师，当前目录里 `corpus/` 是一批运维笔记。
+
+请用检索命令（如 grep、rg）在 `corpus/` 下查找，回答三个问题：
+
+- 字符串 `zephyrquorum` 在 corpus/ 全部文件中的出现次数（区分大小写）
+- 字符串 `quorum_drift_ms` 在 corpus/ 全部文件中的出现次数（区分大小写）
+- 出现 `zephyrquorum` 次数最多的那个文件（写相对路径，例如 `corpus/note-07.md`），以及该文件中 `zephyrquorum` 第一次出现所在的行号
+
+补充说明：每个文件里同一个字符串每行最多出现一次。
+
+回答要求：
+
+- 本任务只有 Bash 工具可用，请全部用命令行完成（不要使用内置的 Grep/Glob 工具）。
+- 不要修改任何文件。
+- 不要访问网络。
+- 不要使用子代理。
+- 最后一条消息只输出一个 JSON 对象，键为 `zephyrquorum_hits`、`quorum_drift_ms_hits`、`zq_top_file`、`zq_top_file_first_line`。不要输出解释文字，不要使用代码块标记。

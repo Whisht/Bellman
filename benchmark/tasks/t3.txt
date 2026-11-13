@@ -1,0 +1,27 @@
+你是一名工程师，当前目录里 `codec/` 是一个 Python 服务。
+
+请完成以下步骤：
+
+1. 用 Read 工具完整读一遍 `codec/eventstore.py`。
+2. 修改 `codec/eventstore.py` 中 `apply_batch` 函数的这一行：
+
+   把 `    if not batch:` 改成 `    if not batch or len(batch) > 4096:`
+
+   只改这一行，不要改动文件里其他任何内容。
+3. 用 Read 工具重新读一遍 `codec/eventstore.py`。
+4. 用 Read 工具读一遍 `codec/ledger.py`，不要修改它。
+
+然后回答四个问题：
+
+- 改动后那一行的完整内容（含缩进之外的代码文本）
+- 改动后那一行在文件中的行号
+- `codec/ledger.py` 中顶层 `def` 的个数
+- `codec/ledger.py` 中 `ANCHOR:` 标记后面的完整值
+
+回答要求：
+
+- 本任务只有 Read 与 Edit 工具可用，请全部用它们完成。
+- 除上述第 2 步外，不要修改任何文件。
+- 不要访问网络。
+- 不要使用子代理。
+- 最后一条消息只输出一个 JSON 对象，键为 `condition`、`condition_line`、`ledger_defs`、`ledger_anchor`。不要输出解释文字，不要使用代码块标记。
