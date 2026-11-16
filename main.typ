@@ -283,7 +283,7 @@
 // ============================================================
 本文档从概率论公理体系与有限马尔可夫决策过程（MDP）的基本定义出发，系统、严密地推导强化学习中的核心方程体系——#strong[贝尔曼期望方程]（Bellman Expectation Equation）与#strong[贝尔曼最优方程]（Bellman Optimality Equation）。
 
-在强化学习经典文献（如 Sutton & Barto《强化学习：导论》）中，贝尔曼方程通常以两种等价的数学形式出现：一是以条件期望表征的#strong[紧凑形式]（基于全期望公式与塔性质），二是以状态转移概率与策略分布显式求和表征的#strong[展开形式]（基于全概率公式与链式法则）。本笔记严格区分并打通这两条推导路径，按“先单步桥接（$v arrow.r q$、$q arrow.r v$）、后复合自递推（$v arrow.r v$、$q arrow.r q$）”的统一逻辑组织方程推导（#link(<sec-mdp>)[第 1]--#link(<sec-bellman-opt>)[5 章]），核心对照见 @tab-overview；进而从#strong[期望值与不动点估计理论]出发，系统阐述基于压缩映射不动点迭代的动态规划（含值迭代）、基于大数定律的蒙特卡洛估计以及基于 Robbins-Monro 随机近似理论的时序差分（TD）估计方法，给出状态价值与动作价值估计算法结合贝尔曼期望/最优方程导出强化学习算法体系的关联谱系（#link(<sec-value-estimation>)[第 6 章]）；再转向一条不以贝尔曼方程为求解对象的路线——把策略参数化，直接对期望回报目标求梯度，并说明这条路线在何处仍借道贝尔曼方程、何处是例外（#link(<sec-policy-gradient>)[第 7]--#link(<sec-algo-selection>)[8 章]）。
+在强化学习经典文献（如 Sutton & Barto《强化学习：导论》）中，贝尔曼方程通常以两种等价的数学形式出现：一是以条件期望表征的#strong[紧凑形式]（基于全期望公式与塔性质），二是以状态转移概率与策略分布显式求和表征的#strong[展开形式]（基于全概率公式与链式法则）。本笔记严格区分并打通这两条推导路径，按“先单步桥接（$v arrow.r q$、$q arrow.r v$）、后复合自递推（$v arrow.r v$、$q arrow.r q$）”的统一逻辑组织方程推导（#link(<sec-mdp>)[第 1]--#link(<sec-bellman-opt>)[5 章]），核心对照见 @tab-overview；进而从#strong[期望值与不动点估计理论]出发，系统阐述基于压缩映射不动点迭代的动态规划（含值迭代）、基于大数定律的蒙特卡洛估计以及基于 Robbins-Monro 随机近似理论的时序差分（TD）估计方法，给出状态价值与动作价值估计算法结合贝尔曼期望/最优方程导出强化学习算法体系的关联谱系（#link(<sec-value-estimation>)[第 6 章]）；最后阐述不以贝尔曼不动点方程为直接求解对象的#strong[策略梯度范式]——将策略显式参数化并直接对期望回报性能目标求导，同时厘清贝尔曼方程在该范式中作为优势函数定义、Critic 辅助价值估计以及软贝尔曼不动点特例的理论边界（#link(<sec-policy-gradient>)[第 7]--#link(<sec-algo-selection>)[8 章]）。
 
 为突出公式中的核心结构，全文采用三色标记高亮关键数学项：$mhl(pi(a divides s) \/ max_a)$（琥珀色）标记#strong[策略层算子或核心变换]，$mhlb(S_(t+1) \/ p(g divides s'))$（浅蓝色）标记#strong[新引入的条件变量或马尔可夫条件独立化简项]，$mhlg(v_pi (S_(t+1)) \/ q_star (s', a'))$（浅绿色）标记#strong[后继时刻的价值递推项]。
 
@@ -479,7 +479,7 @@ $ q_pi (s, a) eq.dot bb(E)_(G_t) [#mhlg($G_t$) divides #mhlb($S_t = s, thin A_t 
   + 当 $y$ 是给定的具体取值时，$bb(E) [X divides Y = y]$ 是一个确定的#strong[实数]；若将 $y$ 视为自变量，则 $g(y) eq.dot bb(E) [X divides Y = y]$ 是一个关于 $y$ 的确定性函数。
   + 若未指定 $Y$ 的具体取值，记号 $bb(E) [X divides Y]$ 表示将函数 $g(dot.op)$ 作用于随机变量 $Y$ 上所得的#strong[复合随机变量] $g(Y)$：当 $Y$ 取值为 $y$ 时，$bb(E) [X divides Y]$ 的取值即为 $bb(E) [X divides Y = y]$。#link(<sec-bellman-exp-cond>)[第 3 章]与#link(<sec-bellman-opt>)[第 5 章]的推导均建立在这一视角之上。
 
-- #strong[P8（条件期望的单调性）]：若随机变量满足 $X lt.eq Y$（对所有可能取值均成立），则因 $p(x, y divides z) gt.eq 0$ 且 $y - x gt.eq 0$，必有：
+- #strong[P8（条件期望的单调性）]：若随机变量满足 $X lt.eq Y$ 几乎处处成立（即当 $x > y$ 时 $p(x, y divides z) = 0$），则由 $bb(E) [Y - X divides Z = z] = sum_(x lt.eq y) (y - x) p(x, y divides z) gt.eq 0$ 及条件期望的线性性，必有：
   $ bb(E) [X divides Z] lt.eq bb(E) [Y divides Z] . $ <eq-p8-mono>
 
 - #strong[P9（条件已知量的提取性质）]：若函数 $f(Z)$ 仅依赖于条件变量 $Z$，则在以 $Z$ 为条件的期望中，$f(Z)$ 可视为已知常数直接提到期望号外：
@@ -653,8 +653,8 @@ $ #eqbox([$ v_pi (s) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma t
 #strong[证明]：从定义 $v_pi (s) eq.dot bb(E)_(G_t) [G_t divides S_t = s]$（@eq-v-def）出发，由#link(<prop-1.1>)[命题 1.1] 与#link(<lem-1>)[引理 1] 拆分为两项后，对第二项应用#link(<lem-2>)[引理 2]（取 $Y = S_t, Z = S_(t + 1)$）引入后继状态，再由#link(<lem-3>)[引理 3] 结论 B（@eq-lem-3b）省去历史条件 $S_t = s$：
 $
   v_pi (s) & eq.dot bb(E)_(G_t) [G_t divides S_t = s] = bb(E)_(R_(t + 1), G_(t + 1)) [#mhl($R_(t + 1) + gamma G_(t + 1)$) divides S_t = s] \
-  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, #mhlb($S_(t + 1)$)] thin divides thin S_t = s] \
-  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [#mhlg($v_pi (S_(t + 1))$) divides S_t = s] \
+  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [bb(E)_(G_(t + 1)) [G_(t + 1) divides S_t = s, #mhlb($S_(t + 1)$)] thin divides thin S_t = s] quad #[（由#link(<lem-2>)[引理 2] 加细条件）] \
+  & = bb(E)_(R_(t + 1)) [R_(t + 1) divides S_t = s] + gamma thin bb(E)_(S_(t + 1)) [#mhlg($v_pi (S_(t + 1))$) divides S_t = s] quad #[（由#link(<lem-3>)[引理 3] 结论 B 化简）] \
   & = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma thin #mhlg($v_pi (S_(t + 1))$) divides S_t = s] . quad #[（由 P1 边缘化与#link(<lem-1>)[引理 1] 合并）] #h(1em) square.filled.medium
 $
 
@@ -789,7 +789,7 @@ $ <eq-qq-reward-convention>
 #strong[定理 4.1（$v_pi$ 关于 $q_pi$ 的展开形式）] <thm-4.1> 对任意固定策略 $pi$ 与状态 $s in cal(S)$，有：
 
 $
-  #eqbox([$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) thin #mhlg($q_pi (s, a)$) quad "for all " s in cal(S) $])
+  #eqbox([$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) thin #mhlg($q_pi (s, a)$), quad forall s in cal(S) $])
 $ <eq-exp-explicit-vq>
 
 #strong[证明]：直接将#link(<thm-3.1>)[定理 3.1] 的期望式 $bb(E)_(A_t tilde.op pi(dot.op divides s)) [q_pi (s, A_t)]$ 按离散期望定义展开即得；若从回报分布 $p(g divides s)$ 出发，则只需引入动作变量 $a$ 应用条件全概率公式（@eq-p5-cond）：
@@ -802,7 +802,7 @@ $
 #strong[定理 4.2（$q_pi$ 关于 $v_pi$ 的展开形式）] <thm-4.2> 对任意固定策略 $pi$ 及状态-动作对 $(s, a) in cal(S) times cal(A)$，有：
 
 $
-  #eqbox([$ q_pi (s, a) = sum_(r in cal(R)) #mhl($p(r divides s, a) r$) + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$) quad "for all " (s, a) in cal(S) times cal(A) $])
+  #eqbox([$ q_pi (s, a) = sum_(r in cal(R)) #mhl($p(r divides s, a) r$) + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$), quad forall (s, a) in cal(S) times cal(A) $])
 $ <eq-exp-explicit-qv>
 
 #strong[证明]：由动作价值函数的定义（@eq-q-def）、回报递推式（@eq-return-recursion）与#link(<lem-1>)[引理 1]，将 $q_pi (s, a)$ 拆分为即时奖励期望项 (A) 与未来回报期望项 (B)：
@@ -825,7 +825,7 @@ $
 #strong[定理 4.3（状态价值贝尔曼方程的展开形式）] <thm-4.3> 对任意固定策略 $pi$ 与状态 $s in cal(S)$，有：
 
 $
-  #eqbox([$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$)] quad "for all " s in cal(S) $])
+  #eqbox([$ v_pi (s) = sum_(a in cal(A)) #mhl($pi(a divides s)$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_pi (s')$)], quad forall s in cal(S) $])
 $ <eq-exp-explicit-vv>
 
 #strong[证明（方法一：由定理 4.1 与定理 4.2 直接复合）]：将#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv）中的 $q_pi (s, a)$ 展开式直接代入#link(<thm-4.1>)[定理 4.1]（@eq-exp-explicit-vq）的 $v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a)$，一步即得 @eq-exp-explicit-vv。$square.filled.medium$
@@ -846,7 +846,7 @@ $ <eq-exp-explicit-vv>
 #strong[定理 4.4（动作价值贝尔曼方程的展开形式）] <thm-4.4> 对任意固定策略 $pi$ 及状态-动作对 $(s, a) in cal(S) times cal(A)$，有：
 
 $
-  #eqbox([$ q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($q_pi (s', a')$) $])
+  #eqbox([$ q_pi (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($q_pi (s', a')$), quad forall (s, a) in cal(S) times cal(A) $])
 $ <eq-exp-explicit-qq>
 
 #strong[证明]：在#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv）右端，利用#link(<thm-4.1>)[定理 4.1] 将下一状态价值 $v_pi (s')$ 展开为下一时刻动作 $a'$ 的加权平均 $v_pi (s') = sum_(a' in cal(A)) #mhl($pi(a' divides s')$) #mhlg($q_pi (s', a')$)$，代入即得 @eq-exp-explicit-qq。$square.filled.medium$
@@ -1046,7 +1046,7 @@ $ <eq-opt-def>
 === 状态价值关于动作价值的最优方程（$v_star arrow.r q_star$）
 #strong[定理 5.1（$v_star$ 关于 $q_star$ 的贝尔曼最优方程）] <thm-5.1> 对任意状态 $s in cal(S)$，最优状态价值等于该状态下最优动作价值关于动作 $a in cal(A)$ 的最大值：
 
-$ #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) quad "for all " s in cal(S) $]) $ <eq-opt-cond-vq>
+$ #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$), quad forall s in cal(S) $]) $ <eq-opt-cond-vq>
 
 #strong[证明]：从定义 $v_star (s) eq.dot max_pi v_pi (s)$（@eq-opt-def）出发，代入#link(<thm-3.1>)[定理 3.1] / #link(<thm-4.1>)[定理 4.1]：
 $
@@ -1060,7 +1060,7 @@ $
 #strong[定理 5.2（$q_star$ 关于 $v_star$ 的贝尔曼最优方程）] <thm-5.2> 对任意状态-动作对 $(s, a) in cal(S) times cal(A)$，最优动作价值函数满足：
 
 $
-  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " (s, a) in cal(S) times cal(A) $])
+  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [#mhl($R_(t + 1)$) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a], quad forall (s, a) in cal(S) times cal(A) $])
 $ <eq-opt-cond-qv>
 
 #strong[证明]：从定义 $q_star (s, a) eq.dot max_pi q_pi (s, a)$ 出发，代入#link(<thm-3.2>)[定理 3.2]（@eq-bellman-exp-qv）：
@@ -1075,7 +1075,7 @@ $
 #strong[定理 5.3（状态价值的贝尔曼最优方程）] <thm-5.3> 对任意状态 $s in cal(S)$，最优状态价值函数满足：
 
 $
-  #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a] quad "for all " s in cal(S) $])
+  #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a], quad forall s in cal(S) $])
 $ <eq-opt-cond-vv>
 
 #strong[证明]：将#link(<thm-5.2>)[定理 5.2]（@eq-opt-cond-qv）代入#link(<thm-5.1>)[定理 5.1]（@eq-opt-cond-vq）右端的 $q_star (s, a)$，立得 @eq-opt-cond-vv。$square.filled.medium$
@@ -1084,7 +1084,7 @@ $ <eq-opt-cond-vv>
 #strong[定理 5.4（动作价值的贝尔曼最优方程）] <thm-5.4> 对任意状态-动作对 $(s, a) in cal(S) times cal(A)$，最优动作价值函数满足：
 
 $
-  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a] med "for all " (s, a) in cal(S) times cal(A) $])
+  #eqbox([$ q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a], quad forall (s, a) in cal(S) times cal(A) $])
 $ <eq-opt-cond-qq>
 
 #strong[证明]：对后继状态 $S_(t + 1)$ 应用#link(<thm-5.1>)[定理 5.1] 得 $v_star (S_(t + 1)) = max_(a' in cal(A)) q_star (S_(t + 1), a')$，将其代入#link(<thm-5.2>)[定理 5.2]（@eq-opt-cond-qv）右端，立得 @eq-opt-cond-qq。$square.filled.medium$
@@ -1113,21 +1113,21 @@ $ <eq-opt-cond-qq>
 ) <tab-bellman-opt-explicit>
 
 - #strong[定理 5.5（$v_star arrow.r q_star$ 的展开形式）] <thm-5.5>：已在#link(<thm-5.1>)[定理 5.1] 中直接导出：
-  $ #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$) quad "for all " s in cal(S) $]) $ <eq-opt-explicit-vq>
+  $ #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) #mhlg($q_star (s, a)$), quad forall s in cal(S) $]) $ <eq-opt-explicit-vq>
 
 - #strong[定理 5.6（$q_star arrow.r v_star$ 的展开形式）] <thm-5.6>：由 $q_star (s, a) eq.dot max_pi q_pi (s, a)$ 与#link(<thm-4.2>)[定理 4.2]（@eq-exp-explicit-qv），因 $p(s' divides s, a) gt.eq 0$ 与策略无关，并借助#link(<fact-f2>)[事实 F2]（同一最优策略 $pi_star$ 在所有后继状态上同时最优），将 $max_pi$ 移入求和号内可得：
   $
-    #eqbox([$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$) quad "for all " (s, a) in cal(S) times cal(A) $])
+    #eqbox([$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$), quad forall (s, a) in cal(S) times cal(A) $])
   $ <eq-opt-explicit-qv>
 
 - #strong[定理 5.7（$v_star arrow.r v_star$ 的展开形式）] <thm-5.7>：将#link(<thm-5.6>)[定理 5.6]（@eq-opt-explicit-qv）代入#link(<thm-5.5>)[定理 5.5]（@eq-opt-explicit-vq），可得：
   $
-    #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$)] quad "for all " s in cal(S) $])
+    #eqbox([$ v_star (s) = #mhl($max_(a in cal(A))$) [sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhlg($v_star (s')$)], quad forall s in cal(S) $])
   $ <eq-opt-explicit-vv>
 
 - #strong[定理 5.8（$q_star arrow.r q_star$ 的展开形式）] <thm-5.8>：在#link(<thm-5.6>)[定理 5.6] 右端代入 $v_star (s') = max_(a' in cal(A)) q_star (s', a')$，对任意 $(s, a) in cal(S) times cal(A)$ 可得：
   $
-    #eqbox([$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhl($max_(a' in cal(A))$) #mhlg($q_star (s', a')$) $])
+    #eqbox([$ q_star (s, a) = sum_(r in cal(R)) p(r divides s, a) r + gamma sum_(s' in cal(S)) p(s' divides s, a) #mhl($max_(a' in cal(A))$) #mhlg($q_star (s', a')$), quad forall (s, a) in cal(S) times cal(A) $])
   $ <eq-opt-explicit-qq>
 
 对比#link(<sec-bellman-exp-explicit>)[第 4 章]的 @tab-bellman-exp-explicit 与本章的 @tab-bellman-opt-explicit 可见，贝尔曼最优方程与贝尔曼期望方程共享完全相同的环境层转移结构，二者的唯一区别是将策略层的加权求和算子 $#mhl($sum_(a in cal(A)) pi(a divides s) (dot.op)$)$ 替换为贪心最大化算子 $#mhl($max_(a in cal(A)) (dot.op)$)$。其联合分布合并形式与期望奖励函数形式对照见 @tab-bellman-opt-variants。
@@ -1170,7 +1170,7 @@ $ <eq-opt-cond-qq>
   $
     v_pi = r_pi + gamma P_pi v_pi quad arrow.l.r.double quad (I - gamma P_pi) v_pi = r_pi quad arrow.r.double quad #eqbox([$ v_pi = #mhl($(I - gamma P_pi)^(-1)$) r_pi $])
   $ <eq-matrix-bellman>
-  因 $P_pi$ 为行随机矩阵（谱半径 $rho(P_pi) = 1$），当 $gamma in [0, 1)$ 时，矩阵 $(I - gamma P_pi)$ 严格对角占优且满秩可逆，既可通过矩阵求逆直接解出解析解（时间复杂度 $O(|cal(S)|^3)$），也可通过不动点迭代求解。
+  因 $P_pi$ 为行随机矩阵（谱半径 $rho(P_pi) = 1$），当 $gamma in [0, 1)$ 时，矩阵 $(I - gamma P_pi)$ 严格行对角占优（Strictly Row Diagonally Dominant）且满秩可逆，既可通过矩阵求逆直接解出解析解（时间复杂度 $O(|cal(S)|^3)$），也可通过不动点迭代求解。
 
 + #strong[贝尔曼最优方程是非线性方程组（依赖压缩映射不动点迭代）]：
   由于含有最大化算子 $max_a$，贝尔曼最优方程是非线性方程组，无法直接通过矩阵求逆求解。其解的存在唯一性与迭代收敛性由如下压缩映射定理保证：
@@ -1201,16 +1201,16 @@ $
 = 期望值估计：从方程到算法
 <sec-value-estimation>
 
-#link(<sec-bellman-exp-cond>)[第 3]--#link(<sec-bellman-opt>)[5 章]建立了状态价值（$v_pi, v_star$）与动作价值（$q_pi, q_star$）满足的八条贝尔曼方程，它们是全文的核心。八条方程形态各异，却可以写成同一个#strong[自指不动点方程]：方程右端的算子 $cal(T)$ 作用在未知函数上，而左端正是这个未知函数本身。求解贝尔曼方程，就是求算子 $cal(T)$ 的不动点：
+#link(<sec-bellman-exp-cond>)[第 3]--#link(<sec-bellman-opt>)[5 章]建立了状态价值（$v_pi, v_star$）与动作价值（$q_pi, q_star$）满足的八条贝尔曼方程，它们构成了强化学习价值分析的理论基础。这八条方程均可统一表述为如下#strong[算子不动点方程]：方程右端的贝尔曼算子 $cal(T)$ 作用于未知价值函数，左端即为该价值函数本身。因此，求解贝尔曼方程等价于求解算子 $cal(T)$ 的唯一不动点：
 $
-  x = cal(T) x, #h(2em) x in {v_pi, q_pi, v_star, q_star}, #h(1em) cal(T) thin "为对应的贝尔曼算子" .
+  x = cal(T) x, #h(2em) x in {v_pi, q_pi, v_star, q_star}, #h(1em) cal(T) thin upright("为对应的贝尔曼算子") .
 $ <eq-ch6-fixed-point-shell>
 
-求解算法因此有一个统一的骨架：#strong[不动点迭代] $x_(k + 1) = cal(T) x_k$——用当前估计算出下一个估计，反复执行。从这个骨架出发，本章的全部算法都可以看作对同一个问题的三种回答：#strong[每一步的 $cal(T) x_k$ 究竟怎么算出来？] 把 $cal(T)$ 展开后，它的核心是一个条件数学期望 $bb(E) [dot.op divides dot.op]$：在价值函数的原始定义中它是 $bb(E) [G_t divides S_t = s]$，在单步递推的条件期望形式中它是 $bb(E) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$。因此从理论方程走向可计算算法，取决于以下两个问题：
-1. #strong[如何计算或估计条件期望 $bb(E) [X divides C]$]：当环境模型 $p(s', r divides s, a)$ 已知时，条件期望可通过显式概率加权求和精确计算；当环境模型未知（Model-Free）时，则必须从智能体与环境交互产生的随机轨迹样本中#strong[估计期望值]。
-2. #strong[如何处理未来回报 $G_(t + 1)$ 的递推依赖]：是直接采样完整轨迹直到底层终止以观测真实回报 $G_t$（#strong[无自举]，No Bootstrapping），还是利用贝尔曼方程的一步递推关系，用当前对后继价值的估计量 $V(S_(t + 1))$ 或 $Q(S_(t + 1), dot.op)$ 替代真实未来回报期望（#strong[自举]，Bootstrapping）。
+由此出发，价值函数求解算法具有统一的迭代骨架：#strong[不动点迭代] $x_(k + 1) = cal(T) x_k$。将算子 $cal(T)$ 展开可见，其核心运算是条件数学期望 $bb(E) [dot.op divides dot.op]$——在价值函数的原始定义中表现为 $bb(E) [G_t divides S_t = s]$，而在单步递推的条件期望形式中表现为 $bb(E) [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$。因此，#strong[如何在每一步迭代中计算或估计算子作用结果 $cal(T) x_k$]，取决于以下两个正交维度上的方法选择：
+1. #strong[如何计算或估计条件期望 $bb(E) [X divides C]$（环境模型是否已知）]：当环境模型 $p(s', r divides s, a)$ 已知时，条件期望可通过显式概率加权求和精确计算；当环境模型未知（Model-Free）时，则必须从智能体与环境交互产生的随机轨迹样本中#strong[估计期望值]。
+2. #strong[如何处理未来回报 $G_(t + 1)$ 的递推依赖（是否采用自举递推）]：是直接采样完整轨迹直到底层终止以观测真实回报 $G_t$（#strong[不自举]，No Bootstrapping），还是利用贝尔曼方程的一步递推关系，用当前对后继价值的估计量 $V(S_(t + 1))$ 或 $Q(S_(t + 1), dot.op)$ 替代真实未来回报期望（#strong[自举]，Bootstrapping）。
 
-对这两个问题的不同回答，把本章分成三条路线。前两条路线的回答是"是"与"否"，第三条路线则是"既要采样、又要自举"。三条路线各自又会暴露新的问题，解决这些新问题的办法，就是本章后三节的三块#strong[补丁]。骨架决定方法与方法的相似，补丁决定方法与方法的差异——这条脉络见 @fig-estimation-routes。
+上述两个正交维度的组合导出了本章的三条基本估计路线：模型已知时的“精确期望 + 自举”对应#strong[动态规划（DP）]；模型未知时的“采样 + 不自举”对应#strong[蒙特卡洛（MC）]方法；模型未知时的“采样 + 自举”对应#strong[时序差分（TD）]学习。在此基础上，针对离轨学习中的采样分布偏移、无模型最优控制中的贪心最大化以及离轨多步估计中的乘性方差失控，又进一步衍生出三项#strong[核心扩展机制]——这一整体理论脉络见 @fig-estimation-routes。
 
 #figure(
   {
@@ -1221,51 +1221,51 @@ $ <eq-ch6-fixed-point-shell>
       edge-stroke: 0.7pt + accent,
       node-inset: 4.5pt,
       node-corner-radius: 3pt,
-      node((1, 0), text(size: 7.8pt)[*统一骨架：不动点迭代* \ $x_(k+1) = cal(T) x_k$ \ 每一步都要算出 $cal(T) x_k$，而它内含条件期望 $bb(E)[dot.op divides dot.op]$], fill: accent-soft, width: 62mm),
-      node((0, 1), text(size: 7.6pt)[*路线一：精确求期望* \ （6.2 节）目标 $= cal(T) x_k$ 直接算出 \ 需环境模型 $p(s', r divides s, a)$ \ 不动点迭代（DP）], stroke: 0.85pt + hl-blue-stroke, fill: hl-blue-fill, width: 44mm),
-      node((1, 1), text(size: 7.6pt)[*路线二：采完整回报* \ （6.3 节）目标 $= G_t$，采样至终止 \ 绕开贝尔曼方程，回到价值定义 \ 蒙特卡洛（MC）], stroke: 0.85pt + warn-stroke, fill: warn-soft, width: 44mm),
-      node((2, 1), text(size: 7.6pt)[*路线三：采样 + 自举* \ （6.5 节）目标 $= R_(t+1) + gamma V(S_(t+1))$ \ 免模型，用当前估计替代未来 \ 时序差分（TD）], stroke: 0.85pt + hl-green-stroke, fill: hl-green-fill, width: 44mm),
-      node((1, 2), text(size: 7.4pt)[*三块补丁*：三条路线各自暴露的新问题 \ 6.4 重要性采样 · 6.6 动作价值与控制 · 6.7 离轨多步方差控制], stroke: (dash: "dashed", paint: muted, thickness: 0.6pt), width: 62mm),
-      edge((1, 0), (0, 1), "->", text(size: 6.8pt)[模型已知], label-side: right),
+      node((1, 0), text(size: 7.8pt)[*统一骨架：不动点迭代* \ $x_(k+1) = cal(T) x_k$ \ 核心问题：如何计算或估计内含的条件期望 $bb(E)[dot.op divides dot.op]$], fill: accent-soft, width: 62mm),
+      node((0, 1), text(size: 7.6pt)[*路线一：精确期望 + 自举* \ （6.2 节）目标 $= cal(T) x_k$ 显式求和 \ 模型已知 $p(s', r divides s, a)$ \ 动态规划（DP）], stroke: 0.85pt + hl-blue-stroke, fill: hl-blue-fill, width: 44mm),
+      node((1, 1), text(size: 7.6pt)[*路线二：采样 + 不自举* \ （6.3 节）目标 $= G_t$，采样至终止 \ 模型未知，直接依价值定义估计 \ 蒙特卡洛（MC）], stroke: 0.85pt + warn-stroke, fill: warn-soft, width: 44mm),
+      node((2, 1), text(size: 7.6pt)[*路线三：采样 + 自举* \ （6.5 节）目标 $= R_(t+1) + gamma V(S_(t+1))$ \ 模型未知，以当前估计替代后继真值 \ 时序差分（TD）], stroke: 0.85pt + hl-green-stroke, fill: hl-green-fill, width: 44mm),
+      node((1, 2), text(size: 7.4pt)[*三项核心扩展机制*：分布偏移修正、最优控制与多步方差控制 \ 6.4 重要性采样 · 6.6 动作价值与无模型控制 · 6.7 离轨多步方差控制], stroke: (dash: "dashed", paint: muted, thickness: 0.6pt), width: 64mm),
+      edge((1, 0), (0, 1), "->", text(size: 6.8pt)[模型已知 \ 自举], label-side: right),
       edge((1, 0), (1, 1), "->", text(size: 6.8pt)[模型未知 \ 不自举], label-side: right),
       edge((1, 0), (2, 1), "->", text(size: 6.8pt)[模型未知 \ 自举], label-side: left),
       edge((1, 1), (1, 2), "->", stroke: (dash: "dashed", paint: muted, thickness: 0.6pt)),
     )
   },
-  caption: [本章的生成脉络：贝尔曼方程给出统一的不动点骨架，骨架每一步内含的条件期望在模型已知时精确可算（DP）、在模型未知时只能估计——采完整回报得到 MC（绕开贝尔曼方程），采样一步再自举得到 TD；三条路线各自暴露的新问题由后续三节补丁解决],
+  caption: [本章的理论脉络：贝尔曼方程给出统一的不动点骨架，根据“环境模型是否已知”与“是否采用自举”导出动态规划（精确期望 + 自举）、蒙特卡洛（采样 + 不自举）与时序差分（采样 + 自举）三条基本路线；针对采样分布偏移、无模型最优控制与离轨多步高方差，进一步建立三项核心扩展机制],
 ) <fig-estimation-routes>
 
-本章先建立这一统一视角所依赖的三类数学工具（#link(<sec-expectation-estimation-theory>)[第 6.1 节]）；随后依次给出三条路线：模型已知的精确期望与不动点迭代（#link(<sec-dp-fixed-point>)[第 6.2 节]）、模型未知的完整回报采样（#link(<sec-mc-estimation>)[第 6.3 节]）、模型未知的采样加自举（#link(<sec-td-estimation>)[第 6.5 节]）；并逐一交代三处补丁：离轨评估与重要性采样（#link(<sec-importance-sampling>)[第 6.4 节]）、动作价值与控制算法族（#link(<sec-td-action-value>)[第 6.6 节]）、离轨多步的方差控制（#link(<sec-offpolicy-multistep>)[第 6.7 节]）；最后横向对比三者的统计特征与回溯结构（#link(<sec-estimation-comparison>)[第 6.8 节]）。
+本章首先建立这一统一框架所依赖的三类数学工具（#link(<sec-expectation-estimation-theory>)[第 6.1 节]）；随后依次阐述三条基本估计路线：模型已知时的精确期望与自举不动点迭代（#link(<sec-dp-fixed-point>)[第 6.2 节]）、模型未知时的完整轨迹采样估计（#link(<sec-mc-estimation>)[第 6.3 节]）、模型未知时的采样结合自举递推（#link(<sec-td-estimation>)[第 6.5 节]）；在此过程中系统论述三项核心扩展机制：离轨策略评估与重要性采样（#link(<sec-importance-sampling>)[第 6.4 节]）、动作价值估计与无模型控制算法族（#link(<sec-td-action-value>)[第 6.6 节]）、离轨多步估计的方差控制（#link(<sec-offpolicy-multistep>)[第 6.7 节]）；最后横向对比各方法的统计特征、回溯结构与理论性质（#link(<sec-estimation-comparison>)[第 6.8 节]）。
 
 #divider()
 
 == 期望值估计的统一视角与三类数学工具
 <sec-expectation-estimation-theory>
 
-@fig-estimation-routes 的三条路线共用同一个更新式。把它写出来，后面所有算法的差别就只剩三个位置上的取值不同——这与#link(<sec-robbins-monro-theory>)[第 6.1.3 节]的 Robbins-Monro 迭代式（@eq-robbins-monro-update）以及蒙特卡洛的增量均值公式（@eq-incremental-mean）是同一个式子：
+@fig-estimation-routes 中的三类估计路线均可归纳为如下#strong[通用增量更新形式（General Incremental Update Form）]——它与#link(<sec-robbins-monro-theory>)[第 6.1.3 节]的 Robbins-Monro 随机近似迭代式（@eq-robbins-monro-update）以及蒙特卡洛的增量样本均值公式（@eq-incremental-mean）具有完全一致的代数结构：
 $
   #eqbox([$ x arrow.l x + #mhl($alpha_k$) [#mhlg($y_k$) - x] $])
 $ <eq-ch6-update-shell>
-其中 $x$ 是待估的价值（估计），$y_k$ 是第 $k$ 次更新所用的#strong[目标值]（Target），$alpha_k$ 是步长。算法之间的全部差异，都落在三个坐标上：
+其中 $x$ 为待估计的价值变量，$y_k$ 为第 $k$ 次更新所构造的#strong[目标值]（Target），$alpha_k$ 为更新步长（在确定性全宽同步更新中取 $alpha_k = 1$ 即退化为直接赋值 $x arrow.l y_k$）。不同估计算法之间的本质差异体现在以下#strong[三个核心设计维度]上：
 
-1. #strong[目标值 $y_k$ 从哪里来]：是直接算出精确的条件期望（路线一），还是采样得到完整回报 $G_t$（路线二），还是采样一步再加当前估计自举（路线三）。这决定#strong[是否需要环境模型]以及#strong[目标是否有偏]。
-2. #strong[目标策略与采样策略是否一致]：采样所用的行为策略 $b$ 与想评估的目标策略 $pi$ 相同时，样本可以直接用；不同时，样本来自错误的分布，需要#strong[重要性采样]重新加权——这是本章的第一块补丁（#link(<sec-importance-sampling>)[第 6.4 节]）。
-3. #strong[用什么统计量把样本汇总成估计]：是精确求和（路线一），还是大数定律下的样本均值（路线二），还是 Robbins-Monro 随机近似下的递推平均（路线三）。三种统计量的性质不同，分别由下面三小节的数学工具给出保证。
+1. #strong[目标值 $y_k$ 的构造方式]：是利用已知模型显式计算后继价值估计的条件期望（路线一：DP），还是采样完整轨迹至终止状态以获取真实回报 $G_t$（路线二：MC），抑或采样单步（或有限步）转移后结合当前价值估计进行自举（路线三：TD）。这直接决定了算法#strong[是否依赖环境模型]以及#strong[更新目标是否存在自举偏差]。
+2. #strong[行为策略与目标策略的一致性]：当生成样本的行为策略 $b$ 与待评估的目标策略 $pi$ 一致（同轨，On-Policy）时，轨迹样本可直接用于估计目标期望；当二者不一致（离轨，Off-Policy）且目标依赖于策略 $pi$ 下的动作期望时，必须引入#strong[重要性采样]对样本分布偏差进行修正（见#link(<sec-importance-sampling>)[第 6.4 节]核心扩展一）。
+3. #strong[汇聚样本的统计更新机制]：是采用精确概率加权求和（路线一），还是基于大数定律的经验样本均值（路线二），抑或基于 Robbins-Monro 随机近似理论的在线递推更新（路线三）。三类统计机制的收敛性质分别由下文三小节的数学定理给出严格保证。
 
 #figure(
-  caption: [三条路线在三个坐标上的取值对比。三者共用更新壳 @eq-ch6-update-shell，差别只在目标值 $y_k$ 的构造方式与所用的统计量],
+  caption: [三条基本估计路线在核心设计维度上的特征对比。三者共享通用更新形式 @eq-ch6-update-shell，核心区别在于目标值 $y_k$ 的构造方式、是否自举及所依托的收敛理论],
   text(size: 8.6pt, table(
     columns: (26mm, 1fr, 1fr, 1fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon),
-    table.header([坐标], [路线一：不动点迭代（DP）], [路线二：蒙特卡洛（MC）], [路线三：时序差分（TD）]),
+    table.header([设计维度], [路线一：动态规划（DP）], [路线二：蒙特卡洛（MC）], [路线三：时序差分（TD）]),
     table.hline(),
-    [环境模型], [必须已知], [不需要], [不需要],
-    [目标值 $y_k$], [$cal(T) x_k$（精确期望）], [$G_t$（完整回报）], [$R_(t+1) + gamma V(S_(t+1))$（自举）],
-    [统计量], [显式概率求和], [大数定律 · 样本均值], [Robbins-Monro 随机近似],
-    [目标是否自举], [否（直接解方程）], [否（采样至终止）], [是（用当前估计替代未来）],
-    [目标是否有偏], [无偏], [无偏], [有偏（源于自举）],
-    [方差来源], [无采样方差], [整幕随机性，随幕长增长], [单步随机性，最低],
-    [与贝尔曼方程的关系], [直接求解方程本身], [绕开方程，回到价值定义], [使用方程的单步递推形式],
+    [环境模型], [必须已知], [无需已知（免模型）], [无需已知（免模型）],
+    [目标值 $y_k$], [$cal(T) x_k$（精确期望 + 自举）], [$G_t$（完整轨迹回报）], [$R_(t+1) + gamma V(S_(t+1))$（采样 + 自举）],
+    [理论基础], [压缩映射与显式概率求和], [大数定律 · 经验样本均值], [Robbins-Monro 随机近似],
+    [目标是否自举], [是（用当前估计 $V_k$ 递推）], [否（采样至轨迹终止）], [是（用当前估计 $V$ 替代未来）],
+    [目标是否有偏], [无采样偏差；收敛前含初值 $V_0$ 的自举截断误差（按 $gamma^k$ 衰减）], [无偏（首次访问协议下）], [有偏（源于自举估计与有限样本）],
+    [方差来源], [无随机采样方差], [整幕轨迹随机性，随幕长增长], [单步转移随机性，方差显著更低],
+    [与贝尔曼方程的关系], [基于显式展开式迭代求解不动点], [不经一步递推，直接依价值定义采样], [基于条件期望递推式做随机近似],
   )),
 ) <tab-three-routes>
 
@@ -1409,13 +1409,13 @@ $ <eq-rm-error-recursion>
 
 #divider()
 
-== 路线二 · 基于蒙特卡洛（Monte Carlo）方法的价值估计（模型未知：完整轨迹采样）
+== 路线二 · 基于蒙特卡洛（Monte Carlo）方法的价值估计（模型未知：采样 + 不自举）
 <sec-mc-estimation>
-当环境模型 $p(s', r divides s, a)$ 未知时，无法执行#link(<sec-dp-fixed-point>)[第 6.2 节]中的显式概率求和 $sum_(s', r) p(s', r divides s, a) [dot.op]$。路线二给出的是一个彻底而诚实的退让：#strong[蒙特卡洛（Monte Carlo, MC）方法]绕开一步贝尔曼递推方程，直接回到#link(<sec-value-functions>)[第 1.3 节]中价值函数的#strong[原始期望定义]（#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]）：
+当环境模型 $p(s', r divides s, a)$ 未知时，无法执行#link(<sec-dp-fixed-point>)[第 6.2 节]中的显式概率求和 $sum_(s', r) p(s', r divides s, a) [dot.op]$。此时，#strong[蒙特卡洛（Monte Carlo, MC）方法]不再借助一步贝尔曼递推方程进行自举，而是直接依据#link(<sec-value-functions>)[第 1.3 节]中价值函数的#strong[原始期望定义]（#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]）进行采样估计：
 $
   v_pi (s) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s], #h(3em) q_pi (s, a) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s, A_t = a] .
 $
-绕开贝尔曼方程，并不意味着 MC 与它无关：上面这两条价值定义正是#link(<sec-bellman-exp-cond>)[第 3]--#link(<sec-bellman-opt>)[5 章]全部贝尔曼方程的出发点。MC 省掉的只是"用递推关系把未来的期望自举回来"这一步。这一取舍的后果是双向的：目标值 $G_t$ 无偏，不受自举偏差影响，也不依赖马尔可夫性假设；但必须等到整幕终止才能更新，且方差随幕长增长。
+上述两条价值定义正是#link(<sec-bellman-exp-cond>)[第 3]--#link(<sec-bellman-opt>)[5 章]全部贝尔曼方程的共同起点。与动态规划或时序差分方法相比，蒙特卡洛方法省去了“利用一步贝尔曼递推关系将未来回报期望以当前估计值自举替换”的步骤。这一机制在统计性质上带来两方面影响：一方面，更新目标 $G_t$ 是真实回报的无偏样本，完全不受自举初值偏差的影响，且对环境状态的马尔可夫性假设不敏感；另一方面，算法必须等待整幕轨迹终止后才能执行更新，且由于累加了整段轨迹的多步随机性，估计方差随幕长显著增长。
 
 在#strong[分幕式任务]（Episodic Tasks，每幕必在有限步 $T < oo$ 内到达终止状态）中，智能体遵循策略 $pi$ 与环境交互生成完整的一幕轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h, S_(T - 1), A_(T - 1), R_T)$。从轨迹末端 $t = T - 1$ 向起点 $t = 0$ 逆向递推 $G_t = R_(t + 1) + gamma G_(t + 1)$（初值 $G_T = 0$），即可在 $O(T)$ 时间内精确算出该幕轨迹每个时刻 $t$ 的真实观测回报 $G_t$，再应用#link(<prop-6.2>)[命题 6.2] 的蒙特卡洛样本均值估计期望。
 
@@ -1428,11 +1428,11 @@ $
    $
      #eqbox([$ hat(V)_pi^upright("FV") (s) eq.dot #mhl($frac(1, N(s)) sum_(i = 1)^(N(s))$) #mhlg($G_s^((i))$), #h(2em) upright("增量更新：") quad V(s) arrow.l V(s) + #mhl($frac(1, N(s))$) [#mhlg($G_(t_1 (s))$) - V(s)] $])
    $ <eq-mc-first-visit-v>
-   #strong[理论性质]：不同幕的轨迹相互独立，且每个首次访问回报满足 $bb(E)[G_(t_1 (s)) divides S_(t_1 (s)) = s] = v_pi (s)$。由于 $N(s)$ 本身是随机变量，且与回报来自同一批轨迹，无偏性与方差须在给定样本量的条件下陈述：给定 $N(s) = n$ 后，这 $n$ 个回报条件独立同分布，由#link(<prop-6.2>)[命题 6.2] 得
+   #strong[理论性质]：不同幕的轨迹相互独立，且由马尔可夫性（P14），给定首次访问时刻状态 $S_(t_1 (s)) = s$ 后，后续回报 $G_(t_1 (s))$ 的分布仅由状态 $s$、环境转移律与策略 $pi$ 决定，与到达 $s$ 之前的历史轨迹以及其余幕是否访问 $s$ 条件独立，故满足 $bb(E)[G_(t_1 (s)) divides S_(t_1 (s)) = s] = v_pi (s)$ 且条件方差 $upright("Var")(G_(t_1 (s)) divides N(s) = n) = upright("Var")(G_t divides S_t = s)$。由于访问次数 $N(s)$ 本身是随机变量，无偏性与方差须在给定样本量的条件下陈述：给定 $N(s) = n$ 后，这 $n$ 个首次访问回报条件独立同分布，由#link(<prop-6.2>)[命题 6.2] 得
    $
-     bb(E)[hat(V)_pi^upright("FV") (s) divides N(s) = n] = v_pi (s), #h(2em) upright("Var")(hat(V)_pi^upright("FV") (s) divides N(s) = n) = upright("Var")(G_(t_1 (s)) divides N(s) = n) / n .
+     bb(E)[hat(V)_pi^upright("FV") (s) divides N(s) = n] = v_pi (s), #h(2em) upright("Var")(hat(V)_pi^upright("FV") (s) divides N(s) = n) = frac(upright("Var")(G_(t_1 (s)) divides N(s) = n), n) = frac(upright("Var")(G_t divides S_t = s), n) .
    $
-   若采用“持续采样直到获得 $n$ 个访问 $s$ 的幕”的固定样本量协议，则无条件地有 $bb(E)[hat(V)_pi^upright("FV") (s)] = v_pi (s)$ 与方差 $upright("Var")(G_(t_1 (s))) \/ n$；若固定总幕数 $M$ 而令 $N(s)$ 随机，则只能使用上述条件结论。若 $s$ 以概率 $1$ 被无限次访问，则 $N(s) arrow.r oo$，估计量由强大数定律以概率 $1$ 收敛于 $v_pi (s)$。
+   若采用“持续采样直到获得 $n$ 个访问 $s$ 的幕”的固定样本量协议，则无条件地有 $bb(E)[hat(V)_pi^upright("FV") (s)] = v_pi (s)$ 与方差 $upright("Var")(G_t divides S_t = s) \/ n$；若固定总幕数 $M$ 而令 $N(s)$ 随机，则适用上述条件结论。若 $s$ 以概率 $1$ 被无限次访问，则 $N(s) arrow.r oo$，估计量由强大数定律以概率 $1$ 收敛于 $v_pi (s)$。
 
 2. #strong[每次访问型蒙特卡洛估计（Every-Visit MC Prediction）]：
    将所有幕中访问状态 $s$ 的#strong[全部时间步]对应的回报均纳入样本均值计算（每访问一次计数器 $N(s) arrow.l N(s) + 1$，并按 $V(S_t) arrow.l V(S_t) + frac(1, N(S_t)) [G_t - V(S_t)]$ 或常步长 $alpha$ 更新）。由于同一幕内先后两次访问 $s$ 的回报共享后续轨迹奖励，样本之间相关，每次访问估计量在有限样本下有偏；当 $N(s) arrow.r oo$ 时偏差趋于零，估计量同样以概率 $1$ 收敛于 $v_pi (s)$。Singh & Sutton (1996) 指出，样本较少时每次访问估计的均方误差常低于首次访问估计。
@@ -1460,57 +1460,59 @@ $
      $ <eq-epsilon-greedy-policy>
      对任意 $epsilon$-软策略 $pi$，关于 $q_pi$ 的 $epsilon$-贪心策略 $pi'$ 满足 $v_(pi') (s) gt.eq v_pi (s)$（策略改进定理在 $epsilon$-软策略类中的推广，Sutton & Barto 第 5.4 节），固定 $epsilon$ 时的极限是 $epsilon$-软策略类中的最优策略，而非 $pi_star$。若探索率按#strong[无限探索且渐近贪心（GLIE，Greedy in the Limit with Infinite Exploration，如 $epsilon_k = 1 \/ k$）]条件衰减，且所有 $(s, a)$ 被无限次访问、按各 $(s, a)$ 访问次数定义的步长 $alpha_k (s, a)$ 满足 Robbins-Monro 条件（@eq-rm-step-conditions），则同轨表格型 $epsilon$-软 MC 控制的 $Q$ 以概率 $1$ 收敛于 $q_star$；@eq-mc-q-update 取常步长 $alpha$ 时不满足 $sum alpha_k^2 < oo$，不在此结论之内。
 
-3. #strong[离轨策略的样本错配]：以上估计量都假定样本由被评估的策略 $pi$ 自己产生。若样本来自另一个策略，则用它们求平均得到的是那个策略的动作价值，而不是 $q_pi (s, a)$。这是本章的第一块补丁，单独在#link(<sec-importance-sampling>)[第 6.4 节]展开。
+3. #strong[离轨策略的样本分布错配]：上述估计量均假定轨迹样本由待评估的目标策略 $pi$ 自身生成。若样本由另一行为策略 $b$ 生成，直接对回报样本求均值将收敛于 $q_b (s, a)$ 而非 $q_pi (s, a)$。针对这一采样分布错配问题的修正机制，将在#link(<sec-importance-sampling>)[第 6.4 节]专门阐述。
 
 #divider()
 
-== 补丁一 · 离轨评估与重要性采样（采样分布与目标分布不一致）
+== 核心扩展一 · 离轨策略评估与重要性采样（分布错配修正）
 <sec-importance-sampling>
-前两条路线都默认了一件事：样本是由被评估的策略 $pi$ 自己产生的。但实际算法里，样本往往来自另一个策略——用带探索的策略采集数据、同时评估或改进一个更贪心的目标策略，是所有离轨（Off-Policy）方法的共同结构。此时估计量被算在了错误的分布上：这不是数值误差，而是#strong[分布错配]。本节把这块补丁讲清楚：它修的是什么、怎么修、代价是什么，以及#strong[什么情况下根本不需要它]。
+前述两类路线均默认轨迹样本由待评估的目标策略 $pi$ 生成（同轨学习）。然而在实际控制算法中，为了兼顾探索与利用，常需采用富于探索性的策略采集交互数据，同时评估或优化另一个更为贪心的目标策略——这构成了所有离轨（Off-Policy）方法的基本范式。此时，样本服从行为策略诱导的轨迹分布而非目标策略分布，存在着#strong[采样分布错配（Distribution Mismatch）]。本节系统阐述离轨策略评估的理论前提、似然比修正机制、方差特性，以及#strong[无需引入重要性采样的判定准则]。
 
-1. #strong[病灶与覆盖假设]：
-   设样本由#strong[行为策略（Behavior Policy）] $b(a divides s)$ 产生，而要估计的是#strong[目标策略（Target Policy）] $pi(a divides s)$ 的动作价值 $q_pi (s, a)$。直接对 $b$ 的样本求平均，收敛到的是 $q_b (s, a)$ 而不是 $q_pi (s, a)$——整个估计的目标错了。
-   唯一可能修好的前提是#strong[覆盖假设（Coverage）]：
+1. #strong[问题症结与覆盖性假设]：
+   设交互轨迹样本由#strong[行为策略（Behavior Policy）] $b(a divides s)$ 生成，而待估计的目标量为#strong[目标策略（Target Policy）] $pi(a divides s)$ 下的动作价值 $q_pi (s, a)$（或状态价值 $v_pi (s)$）。若直接对行为策略 $b$ 采样的回报求经验平均，估计量将收敛于 $q_b (s, a) eq.dot bb(E)_b [G_t divides S_t = s, A_t = a]$，与目标价值 $q_pi (s, a)$ 存在系统性偏差。
+   消除该分布偏差的充要前提是满足#strong[覆盖性假设（Coverage Assumption）]（亦称绝对连续性条件）：
    $
      pi(a divides s) > 0 ⟹ b(a divides s) > 0, #h(1.5em) forall s in cal(S), a in cal(A) .
    $ <eq-is-coverage>
-   即 $b$ 必须在 $pi$ 认为可能的每个动作上都留有正概率。若某处 $pi(a divides s) > 0$ 而 $b(a divides s) = 0$，则该处的样本永远不会出现，任何加权都无法弥补——这不是估计精度问题，而是信息缺失，不可修复。
+   即凡是目标策略 $pi$ 赋予正概率的动作，行为策略 $b$ 亦必须以正概率探索。若在某状态-动作对上 $pi(a divides s) > 0$ 而 $b(a divides s) = 0$，则该分支的样本在采样分布下的支撑集缺失，任何重加权手段均无法恢复其期望信息。
 
-2. #strong[手段：轨迹概率比，环境项相消]：
-   关键观察是，$b$ 与 $pi$ 的差别只体现在#strong[动作的选取]上，环境的演化规律是同一个。把给定 $S_t, A_t$ 之后后续轨迹 $tau_(t + 1 : T) = (S_(t + 1), A_(t + 1), dots.h, S_T)$ 在两个策略下的条件概率相除，链式展开后#strong[未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$ 在分子分母中完全约消]，只剩下动作概率的比值：
+2. #strong[修正机制：轨迹似然比与环境转移概率的代数约消]：
+   注意行为策略 $b$ 与目标策略 $pi$ 的差异仅体现在#strong[策略层的动作采样概率]上，而底层的#strong[环境状态转移规律 $p(s', r divides s, a)$ 完全相同]。给定 $(S_t = s, A_t = a)$ 后，将后续子轨迹 $tau_(t + 1 : T) = (S_(t + 1), A_(t + 1), dots.h, S_T)$ 在目标策略 $pi$ 与行为策略 $b$ 下的条件概率相除，按乘法链式法则展开后，#strong[未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$ 在分子与分母中完全约消]，所得相对似然比仅由已知的策略概率之比构成：
    $
      rho_(t + 1 : T - 1) eq.dot frac(product_(k = t + 1)^(T - 1) pi(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k)), product_(k = t + 1)^(T - 1) b(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k))) = #mhl($product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$) .
    $ <eq-importance-sampling-ratio>
-   这个#strong[重要性采样比（Importance Sampling Ratio）]完全不依赖环境模型，因此是模型无关的。加权后的回报样本满足 $bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t = s, A_t = a] = q_pi (s, a)$：它把"在 $b$ 下采样"还原成了"在 $pi$ 下求期望"。
+   该比值称为#strong[重要性采样比（Importance Sampling Ratio）]，由于不依赖于未知的环境动力学模型 $p$，可直接用于无模型离轨评估。对动作价值 $q_pi (s, a)$，因时刻 $t$ 的动作 $A_t = a$ 已由条件固定，似然比从 $k = t + 1$ 开始累乘，满足无偏测度变换恒等式 $bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t = s, A_t = a] = bb(E)_pi [G_t divides S_t = s, A_t = a] = q_pi (s, a)$。
+   #strong[注（状态价值 $v_pi (s)$ 与动作价值 $q_pi (s, a)$ 的似然比下标区分）]：若待评估的对象是#strong[状态价值 $v_pi (s)$]，由于在条件 ${S_t = s}$ 下当前时刻动作 $A_t$ 并未固定、亦由策略采样产生，故重要性采样比必须从时刻 $t$ 开始累乘，记为 $rho_(t : T - 1) eq.dot product_(k = t)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$，此时有 $bb(E)_b [rho_(t : T - 1) G_t divides S_t = s] = v_pi (s)$。
 
-3. #strong[估计量族：普通 IS 与加权 IS]：
-   对同一个 $(s, a)$ 收集到的 $N(s, a)$ 个样本，有两种组合方式：
+3. #strong[估计量构造：普通重要性采样（OIS）与加权重要性采样（WIS）]：
+   设在状态-动作对 $(s, a)$ 上共采集到 $N(s, a)$ 个轨迹回报样本 ${G_((i))}$ 及对应的似然比 ${rho_((i))}$，可构造两类离轨估计量：
    $
      hat(Q)_pi^upright("OIS") (s, a) = frac(1, N(s, a)) sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), #h(2.5em) hat(Q)_pi^upright("WIS") (s, a) = frac(sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$)) .
    $ <eq-mc-ois-wis>
-   - #strong[普通重要性采样（Ordinary IS, OIS）]：$hat(Q)_pi^upright("OIS") (s, a)$ 的期望严格等于 $q_pi (s, a)$，是无偏的；但它除以的是固定样本数 $N$，权重 $rho$ 可以任意大，方差可能无界。
-   - #strong[加权重要性采样（Weighted IS, WIS）]：$hat(Q)_pi^upright("WIS") (s, a)$ 用权重之和 $sum_i rho_((i))$ 代替样本数 $N$ 作分母，相当于把 $rho$ 归一化。代价是引入了 $O(1 \/ N)$ 量级的偏差（因为分母是随机的），回报是当 $G$ 有界时估计量必落在 $[min_i G_((i)), max_i G_((i))]$ 内，方差有界。实践中常取 WIS。
-   WIS 也可以写成增量式。设 $W_(n + 1) = W_n + rho_(n + 1)$，则
+   - #strong[普通重要性采样（Ordinary IS, OIS）]：$hat(Q)_pi^upright("OIS") (s, a)$ 对任意样本量均满足 $bb(E)_b [hat(Q)_pi^upright("OIS") (s, a)] = q_pi (s, a)$，是严格#strong[无偏估计量]；但由于分母为确定性样本数 $N(s, a)$，当连乘权重 $rho_((i))$ 出现极端值时，估计量方差可能急剧膨胀甚至无界。
+   - #strong[加权重要性采样（Weighted IS, WIS）]：$hat(Q)_pi^upright("WIS") (s, a)$ 以随机权重之和 $sum_i rho_((i))$ 作为归一化分母，构成各样本回报的凸组合（当回报有界时，估计值严格落在 $[min_i G_((i)), max_i G_((i))]$ 区间内），方差显著更低且恒有界。由于分母是随机变量，WIS 在有限样本下存在 $O(1 \/ N)$ 量级的偏差，但随 $N arrow.r oo$ 偏差渐近趋于零（渐近无偏，Consistent）。工程实践中通常优先采用 WIS。
+   WIS 亦可写为增量递推形式：令累积权重 $W_(n + 1) = W_n + rho_(n + 1)$，则有
    $
      Q_(n + 1) = Q_n + frac(rho_(n + 1), W_(n + 1)) [G_(n + 1) - Q_n] .
    $ <eq-mc-wis-incremental>
-   对照@eq-ch6-update-shell 可见，这仍然是同一个更新模板 $x arrow.l x + alpha_k (y_k - x)$，只是步长不再是预设的 $alpha_k$，而变成了#strong[由数据决定的随机步长] $alpha_k = rho_(k) \/ W_(k)$——与@eq-incremental-mean 中 $1 \/ N$ 自动产生是同一回事，只是这里每个样本的"份量"不同。
+   对照 @eq-ch6-update-shell 可见，上式依然遵循通用增量更新形式 $x arrow.l x + alpha_k (y_k - x)$，其等效步长 $alpha_k = rho_k \/ W_k$ 是由样本似然比自适应决定的归一化权重（当同轨 $rho_k equiv 1$ 时即退化为 @eq-incremental-mean 中的等权步长 $1 \/ N$）。
 
-4. #strong[方差的来源与结构]：$rho$ 是连乘积，这是它麻烦的根源。可以证明一个重要的简化：把 $G_t$ 按奖励展开后，只有"乘在该奖励之前"的那些因子才真正影响期望，
+4. #strong[方差的链式累积机理与逐决策重要性采样（Per-Decision IS）]：
+   重要性采样比 $rho_(t + 1 : T - 1)$ 是沿时间步的连乘积，这是导致离轨多步估计方差随步数指数级增长的根本原因。将完整回报 $G_t = sum_(k = t + 1)^T gamma^(k - t - 1) R_k$ 展开后，对第 $k$ 步的即时奖励 $R_k$ 而言，由#strong[时序因果性]与#link(<lem-2>)[引理 2] 的条件期望塔性质，发生在时刻 $k$ 之后的似然比因子 $frac(pi(A_(k') divides S_(k')), b(A_(k') divides S_(k')))$（$k' gt.eq k$）在给定历史轨迹 $(S_t, A_t, dots.h, S_k, R_k)$ 下的条件期望恒等于 $1$（因 $sum_a b(a divides S_(k')) frac(pi(a divides S_(k')), b(a divides S_(k')) ) = sum_a pi(a divides S_(k')) = 1$）。因此，后置似然比因子可从期望中精确消去，仅需保留时刻 $k$ 之前的前缀乘积 $rho_(t + 1 : k - 1)$：
    $
-     bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t, A_t] = bb(E)_b [sum_(k = t + 1)^T gamma^(k - t - 1) rho_(t + 1 : k - 1) R_k divides S_t, A_t],
+     bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t, A_t] = bb(E)_b [sum_(k = t + 1)^T gamma^(k - t - 1) #mhl($rho_(t + 1 : k - 1)$) R_k divides S_t, A_t] .
    $ <eq-per-decision-is>
-   这就是#strong[逐决策重要性采样（Per-Decision IS）]。它说明：越靠后的奖励，乘在它前面的因子越多，方差贡献也越大。所以离轨估计的方差来源有两个：一是 $pi$ 与 $b$ 的差异程度（差异越大，单个因子越极端），二是#strong[幕的长度]（因子连乘的个数）。
-   小结这块补丁的代价：它换来了"可以复用别人的数据"，付出的是方差——而且方差随幕长指数式增长。#link(<sec-offpolicy-multistep>)[第 6.7 节]会给出工程上通行的补救：把连乘截断。
+   上式称为#strong[逐决策重要性采样（Per-Decision IS）]。它表明：时间步越靠后的奖励项 $R_k$，所乘的前缀似然比因子个数越多，引入的方差贡献也越大。综上所述，离轨估计的高方差主要源于两个因素：一是目标策略 $pi$ 与行为策略 $b$ 的分布偏离程度，二是连乘所跨越的有效时间步长。针对多步连乘方差失控的截断修正方案将在#link(<sec-offpolicy-multistep>)[第 6.7 节]详细讨论。
 
-5. #strong[什么时候不需要重要性采样]：这一点常被忽略。$rho$ 之所以出现，是因为目标值 $y_k$ 是#strong[在 $pi$ 下取期望]；如果目标值里根本没有这个期望，就不需要修正。典型情形是#strong[取最大值的自举目标]（值迭代、Q-Learning，见#link(<sec-td-action-value>)[第 6.6 节]）：
+5. #strong[无需重要性采样的结构判据]：
+   并非所有离轨算法均需引入重要性采样比。似然比 $rho$ 的作用是修正#strong[策略层关于动作分布的期望]。若算法所构造的自举目标值 $y_k$ 本身不包含关于目标策略分布的采样期望，则无需乘以似然比。最具代表性的情形是基于#strong[贝尔曼最优方程]的单步自举目标（如 Q-Learning，见#link(<sec-td-action-value>)[第 6.6 节]）：
    $
-     y_k = R_(k + 1) + gamma max_(a') Q(S_(k + 1), a') .
+     y_k = R_(k + 1) + gamma max_(a' in cal(A)) Q(S_(k + 1), a') .
    $ <eq-max-target-no-is>
-   这个 $max$ 是对 $Q$ 本身做的运算，与"动作 $A_k$ 是从哪个策略采出来的"无关；行为策略 $b$ 在这里只承担#strong[覆盖]职责——保证每个 $(s, a)$ 都被访问到，而不承担"分布要正确"的职责。反之，只要目标值是一个#strong[对动作的期望]（例如以 $pi$ 为目标的 Expected SARSA、或任何同轨平均），错配就立刻回来。判据可以一句话概括：#strong[目标值里但凡出现"对动作求期望"，而样本不是该期望对应的策略产生的，就必须加权。]
+   在给定当前状态-动作对 $(S_k = s, A_k = a)$ 的条件下，单步转移 $(R_(k + 1), S_(k + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境动力学决定，与行为策略 $b$ 无关；而后继价值项 $max_(a') Q(S_(k + 1), a')$ 直接对动作空间取确定性最大值（同理，Expected SARSA 直接按已知分布 $sum_(a') pi(a' divides S_(k + 1)) Q(S_(k + 1), a')$ 显式求和），并未依赖从策略中采样出的后继动作 $A_(k + 1)$。在此情形下，行为策略 $b$ 仅需满足持续探索条件以确保所有 $(s, a)$ 被充分访问，无需重要性采样校正。反之，#strong[凡是更新目标中包含需通过轨迹动作采样来近似的策略期望（如离轨 SARSA 或多步离轨回报），且采样策略 $b$ 异于目标策略 $pi$ 时，均必须引入重要性采样加权。]
 
-6. #strong[与贝尔曼方程的关系]：注意这块补丁#strong[没有改动贝尔曼方程本身]。@eq-bellman-exp-vv 依然写着 $v_pi (s) = bb(E)_pi [R + gamma v_pi (S') divides S = s]$，"在 $pi$ 下求期望"这一条一字未变。改的只是#strong[用来估计这个期望的样本权重]。
-   这是本章补丁的共同形态，值得在进入其余补丁前点明：三条路线决定的是#strong[用什么去逼近期望]，补丁则在"样本与期望对不上"的地方做局部修正，而方程始终是那个不动点方程。#link(<sec-td-action-value>)[第 6.6 节]的补丁改的是目标的取法（$max$ 取代期望），#link(<sec-offpolicy-multistep>)[第 6.7 节]的补丁改的是回报的截断方式。
+6. #strong[与贝尔曼方程的理论关系]：
+   重要性采样机制#strong[并未改变底层的贝尔曼期望方程本身]。无论是状态价值方程 $v_pi (s) = bb(E)_pi [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$（@eq-bellman-exp-vv，全轨迹展开对应乘以 $rho_(t : T - 1)$）还是动作价值方程 $q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma q_pi (S_(t + 1), A_(t + 1)) divides S_t = s, A_t = a]$（@eq-bellman-exp-qq，对应乘以 $rho_(t + 1 : T - 1)$），算子的不动点始终严格保持为 $v_pi$ 与 $q_pi$；重要性采样仅在统计估计层面对样本赋予似然比权重，以完成从行为分布 $b$ 到目标分布 $pi$ 的测度变换。
 
 #divider()
 
@@ -1561,11 +1563,11 @@ $
 
 #divider()
 
-== 补丁二 · 动作价值与控制算法族（把"期望"换成"最大值"）
+== 核心扩展二 · 动作价值估计与无模型控制算法族（从期望评估到贪心最大化）
 <sec-td-action-value>
-#link(<sec-td-estimation>)[第 6.5 节]的自举目标始终是"对后继价值的某种加权平均"。本节收拢的是同一处改动的各个方向：把平均换成#strong[最大值]。这一处改动带来的是无模型最优控制的可能——一旦目标里出现 $max$，智能体不再需要"先评估策略、再改进策略"的两步循环，直接用一张 $Q$ 表就能读取贪心动作。
+#link(<sec-td-estimation>)[第 6.5 节]所讨论的自举目标均围绕固定策略下状态价值的期望展开。如#link(<sec-mc-state-value>)[第 6.3.1 节]所述，在环境动力学模型未知的设定下，仅凭状态价值估计 $V(s)$ 无法直接导出贪心控制策略。本节系统阐述从动作价值评估走向无模型最优控制的算法谱系：通过将自举目标中的策略层期望算子替换为#strong[最大化算子 $max$]，智能体无需借助环境模型即可直接从动作价值估计 $Q(s, a)$ 中求解最优策略。
 
-改动的代价沿几个方向显现：$max$ 是凸函数，会系统性高估；目标不再依赖采样动作，于是离轨成为可能（并因此不需要重要性采样，见#link(<sec-importance-sampling>)[第 6.4 节]第 5 项）；而一旦叠加函数近似，还会出现发散风险。以下五个算法共用一个目标结构，逐个说清三件事：#strong[病灶]（为解决问题而改动）、#strong[改动]（改了什么）、#strong[代价与对应方程]。
+从期望算子到最大化算子的演进涉及三个层面的理论权衡：其一，自举目标是否消除策略层的动作采样方差（SARSA 与 Expected SARSA）；其二，将策略层算子替换为 $max$ 后，更新目标不再依赖实际执行的后继动作，从而天然支持无重要性采样的离轨控制（Q-Learning），但因 $max$ 算子的凸性会引入系统性最大化偏差（Double Q-Learning）；其三，当引入参数化函数近似时，自举、离轨与函数近似的结合可能破坏算子不动点迭代的收敛性（DQN 与致命三元组）。以下依次给出这五类代表性算法的数学构造与理论性质：
 
 1. #strong[SARSA 算法（同轨策略 On-Policy TD 控制，对应 $q_pi arrow.r q_pi$ 全采样随机近似）]：
    由#link(<thm-3.4>)[定理 3.4] 的动作价值贝尔曼期望方程（条件期望形式 @eq-bellman-exp-qq）：
@@ -1576,23 +1578,25 @@ $
    $
      #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma #mhlg($Q(S_(t + 1), A_(t + 1))$) - Q(S_t, A_t)] $])
    $ <eq-sarsa-update>
-   SARSA 评估的是正在执行的策略；将其与 $epsilon$-贪心改进交替执行即为同轨控制。表格型 SARSA 收敛于 $q_star$ 的条件为：所有 $(s, a)$ 被无限次访问、各 $(s, a)$ 的步长满足 @eq-rm-step-conditions，且策略满足 GLIE 条件（Singh et al., 2000）。
-   - #strong[病灶]：@eq-bellman-exp-qq 右端的期望是对 $(R_(t + 1), S_(t + 1), A_(t + 1))$ 三者一起取的，其中 $A_(t + 1)$ 的随机性来自策略本身，模型未知时无法用求和消除；#strong[改动]：不对 $A_(t + 1)$ 求期望，改为采样一个实际执行的动作，用单样本代替三重期望；#strong[代价与方程]：目标里多一份策略层方差，且样本只能来自正在执行的策略（同轨）。对应贝尔曼期望方程 @eq-bellman-exp-qq。
+   SARSA 评估的是当前正在执行的策略 $pi$；将其与 $epsilon$-贪心策略改进交替执行即构成同轨 TD 控制。表格型 SARSA 以概率 $1$ 收敛于 $q_star$ 的充分条件为：所有 $(s, a)$ 被无限次访问、各 $(s, a)$ 的步长满足 Robbins-Monro 条件（@eq-rm-step-conditions），且行为策略序列满足 GLIE 条件（Singh et al., 2000）。
+   - #strong[方法动机与核心机制]：@eq-bellman-exp-qq 右端的条件期望同时包含环境转移 $(R_(t + 1), S_(t + 1))$ 与后继动作 $A_(t + 1)$ 两层随机性；SARSA 对这两层随机性均采用单样本采样近似。
+   - #strong[理论性质与所依方程]：严格对应动作价值贝尔曼期望方程 @eq-bellman-exp-qq；由于更新目标直接依赖实际采样执行的后继动作 $A_(t + 1) tilde.op pi$，属于同轨（On-Policy）算法，且目标中包含后继动作采样带来的策略层方差。
 
 2. #strong[期望 SARSA 算法（Expected SARSA，对应 $q_pi arrow.r q_pi$ 环境层采样 + 策略层精确期望）]：
-   回顾#link(<sec-cond-qq>)[第 3.4 节]对 @eq-bellman-exp-qq 的嵌套期望分解：$q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma bb(E)_(A_(t + 1) tilde.op pi) [q_pi (S_(t + 1), A_(t + 1))] divides S_t = s, A_t = a]$。虽然环境转移分布 $p(s', r divides s, a)$ 未知（必须通过采样 $(R_(t + 1), S_(t + 1))$ 做随机近似），但#strong[智能体自身的策略分布 $pi(a' divides S_(t + 1))$ 已知]。因此，无需像 SARSA 那样对下一动作 $A_(t + 1)$ 进行随机采样，而是直接对后继动作求精确期望：
+   回顾#link(<sec-cond-qq>)[第 3.4 节]对 @eq-bellman-exp-qq 的嵌套期望分解：$q_pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma bb(E)_(A_(t + 1) tilde.op pi) [q_pi (S_(t + 1), A_(t + 1))] divides S_t = s, A_t = a]$。虽然环境转移分布 $p(s', r divides s, a)$ 未知（必须通过采样 $(R_(t + 1), S_(t + 1))$ 做随机近似），但#strong[智能体自身的策略分布 $pi(a' divides S_(t + 1))$ 完全已知]。因此，无需对下一动作 $A_(t + 1)$ 进行随机采样，而可直接对后继动作求精确期望：
    $
      #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma sum_(a' in cal(A)) #mhl($pi(a' divides S_(t + 1))$) #mhlg($Q(S_(t + 1), a')$) - Q(S_t, A_t)] $])
    $ <eq-expected-sarsa-update>
-   #strong[优势]：Expected SARSA 消除了因随机采样 $A_(t + 1)$ 引入的策略层方差，在相同步长下比标准 SARSA 具有更低的估计方差与更高的稳定性，且既可作同轨评估/控制，也可自然用作离轨评估（令 $b$ 生成样本，目标策略 $pi$ 代入求和）。
-   - #strong[病灶]：SARSA 的目标里 $A_(t + 1)$ 是采样出来的，可策略分布 $pi(a' divides S_(t + 1))$ 是智能体自己的、完全已知的，这里白白承担了一次采样方差；#strong[改动]：策略层改回精确期望，环境层 $(R_(t + 1), S_(t + 1))$ 仍靠采样；#strong[代价与方程]：每步多一次对全部动作的求和（$|cal(A)|$ 倍计算量），换来更低的方差。对应贝尔曼期望方程 @eq-bellman-exp-qq。
+   #strong[理论优势]：Expected SARSA 完全消除了因随机采样 $A_(t + 1)$ 引入的策略层采样方差，在相同步长下比标准 SARSA 具有更低的估计方差与更高的数值稳定性；同时，它既可用于同轨评估与控制，也可自然用于离轨评估（由行为策略 $b$ 生成转移样本，而在求和项中代入目标策略 $pi$ 的概率）。
+   - #strong[方法动机与核心机制]：针对 SARSA 因采样 $A_(t + 1)$ 引入额外方差的局限，利用策略分布 $pi(a' divides S_(t + 1))$ 已知这一性质，将策略层由单次采样改为显式加权求和，仅在环境层保留采样近似。
+   - #strong[理论性质与所依方程]：对应贝尔曼期望方程 @eq-bellman-exp-qq；以每步增加 $O(|cal(A)|)$ 次动作求和运算为代价，消除策略层采样方差，并在无需重要性采样比的条件下支持单步离轨策略评估。
 
 3. #strong[Q-Learning 算法（离轨策略 Off-Policy TD 控制，对应贝尔曼最优方程 $q_star arrow.r q_star$ 随机近似）]：
-   Watkins (1989) 提出的 Q-Learning 不再经过“评估 $q_pi$ 再改进 $pi$”的两步过程，而是直接对#link(<thm-5.4>)[定理 5.4] 的#strong[动作价值贝尔曼最优方程]（条件期望形式 @eq-opt-cond-qq）：
+   Watkins (1989) 提出的 Q-Learning 不再经过“先评估 $q_pi$、再改进 $pi$”的交替过程，而是直接对#link(<thm-5.4>)[定理 5.4] 的#strong[动作价值贝尔曼最优方程]（条件期望形式 @eq-opt-cond-qq）：
    $
      q_star (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a]
    $
-   应用 Robbins-Monro 随机近似：智能体按行为策略 $b$（如 $epsilon$-贪心）采样四元组 $(S_t, A_t, R_(t + 1), S_(t + 1))$，直接将后继状态的最大动作价值 $max_(a') Q(S_(t + 1), a')$ 作为自举目标：
+   应用 Robbins-Monro 随机近似：智能体按行为策略 $b$（如 $epsilon$-贪心）采样四元组 $(S_t, A_t, R_(t + 1), S_(t + 1))$，直接将后继状态的最大动作价值 $max_(a') Q(S_(t + 1), a')$ 作为自举目标（注：亦可从 Expected SARSA 的角度理解——当目标策略 $pi$ 取为关于当前 $Q$ 的确定性贪心策略时，@eq-expected-sarsa-update 即退化为 Q-Learning）：
    $
      #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($Q(S_(t + 1), a')$) - Q(S_t, A_t)] $])
    $ <eq-td-control>
@@ -1601,65 +1605,86 @@ $
      v_star (s) & = #mhl($max_(a in cal(A))$) #mhlb($bb(E)_(R_(t + 1), S_(t + 1))$) [R_(t + 1) + gamma #mhlg($v_star (S_(t + 1))$) divides S_t = s, A_t = a], \
      q_star (s, a) & = #mhlb($bb(E)_(R_(t + 1), S_(t + 1))$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a] .
    $ <eq-max-expectation-order>
-   - 在 $v_star$ 的方程中 $max_a$ 位于条件期望之外。朴素地复用同一条单步样本为各动作估值再取 $max_a$ 会引入最大化选择偏差，不能作为 $max_a bb(E)[dot.op]$ 的无偏插件；此外，即使已知 $v_star$，从 $v_star$ 选取贪心动作仍需一步模型或额外的环境信息。常规无模型最优控制因此直接估计 $q_star$。
-   - 在 $q_star$ 的方程中条件期望位于最外层，对给定的采样后继状态 $S_(t + 1) = s'$，$max_(a') Q(s', a')$ 只是查表求最大值。给定 $(S_t = s, A_t = a)$ 后，$(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 只由环境转移律决定，与生成轨迹的行为策略 $b$ 无关，后继动作也无需按目标策略采样，因此 Q-Learning 无需重要性采样即可离轨学习。
-   在有限 MDP、奖励有界、行为策略 $b$ 使所有 $(s, a)$ 被无限次访问，且按各 $(s, a)$ 访问次数定义的步长满足 Robbins-Monro 条件时，表格型 $Q(s, a)$ 以概率 $1$ 收敛于 $q_star (s, a)$（Watkins & Dayan, 1992），对行为策略 $b$ 无 GLIE 要求。
-   - #strong[病灶]：SARSA 的目标依赖下一个#strong[实际执行]的动作，于是"评估"与"探索"被绑在一起——为探索而执行的动作会拉低它自己的价值估计，学到的是带探索的策略；#strong[改动]：把 $A_(t + 1)$ 的期望换成对后继动作取 $max$，目标直接指向最优；#strong[代价与方程]：目标从"评估 $pi$"变成"评估 $pi_star$"，样本从此可来自任意策略（离轨）而不需要重要性采样（见#link(<sec-importance-sampling>)[第 6.4 节]第 5 项），代价是 $max$ 带来的系统性高估。对应的是#strong[贝尔曼最优方程] @eq-opt-cond-qq，而非期望方程。
+   - 在 $v_star$ 的方程中 $max_a$ 位于条件期望之外。若直接对单次采样回报取最大，将把期望算子与最大化算子非法交换，引入严重的正向偏差；此外，即使已知 $v_star$，从 $v_star$ 提取贪心动作仍需已知一步环境转移模型。因此，无模型最优控制必须以动作价值 $q_star$ 为估计对象。
+   - 在 $q_star$ 的方程中条件期望位于最外层，对给定的采样后继状态 $S_(t + 1) = s'$，$max_(a') Q(s', a')$ 仅需在动作空间上做确定性最大化。给定 $(S_t = s, A_t = a)$ 后，$(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境转移律决定，与生成轨迹的行为策略 $b$ 无关，后继动作亦无需按目标策略采样，因此 Q-Learning 无需重要性采样即可直接进行离轨控制（见#link(<sec-importance-sampling>)[第 6.4 节]第 5 项）。
+   在有限 MDP、奖励有界、行为策略 $b$ 使所有 $(s, a)$ 被无限次访问，且按各 $(s, a)$ 访问次数定义的步长满足 Robbins-Monro 条件时，表格型 $Q(s, a)$ 以概率 $1$ 收敛于最优动作价值 $q_star (s, a)$（Watkins & Dayan, 1992），对行为策略 $b$ 无 GLIE 要求。
+   - #strong[方法动机与核心机制]：同轨 SARSA 的更新目标依赖含探索噪声的实际执行动作 $A_(t + 1)$，所评估的是带探索的软策略而非最优策略；Q-Learning 将策略层算子替换为贪心最大化 $max_(a')$，使更新目标直接逼近贝尔曼最优算子。
+   - #strong[理论性质与所依方程]：直接对应动作价值贝尔曼最优方程 @eq-opt-cond-qq；实现了探索策略 $b$ 与目标最优策略 $pi_star$ 的解耦（天然离轨且无需重要性采样），但因对含噪估计取最大值而引入系统性高估偏差。
 
 4. #strong[最大化偏差（Maximization Bias）与 Double Q-Learning]：
    在 Q-Learning（@eq-td-control）中，目标项使用带有随机估计误差的同一个价值表 $Q$ 同时完成#strong[选出最大动作]（$a^star = arg max_(a') Q(S_(t + 1), a')$）与#strong[评估该动作的价值]（$Q(S_(t + 1), a^star) = max_(a') Q(S_(t + 1), a')$）。由于 $max$ 是凸函数，即便每个动作的价值估计 $hat(Q)(s', a')$ 都是真值 $q_star (s', a')$ 的无偏估计（$bb(E)[hat(Q)(s', a')] = q_star (s', a')$），由 #strong[Jensen 不等式]必有：
    $
      #mhl($bb(E) [max_(a' in cal(A)) hat(Q)(s', a')]$) gt.eq #mhlb($max_(a' in cal(A)) bb(E) [hat(Q)(s', a')]$) = max_(a' in cal(A)) q_star (s', a') ,
    $ <eq-maximization-bias>
-   即“#strong[最大值的期望大于期望的最大值]”，导致 Q-Learning 系统性地高估（Overestimate）动作价值。#strong[Double Q-Learning]（Hasselt, 2010）通过维护两份交替更新的估计器 $Q_1, Q_2$ 解耦动作选择与价值评估（每步以 $0.5$ 概率随机更新其中一个，如用 $Q_1$ 选出贪心动作 $a^star = arg max_(a') Q_1(S_(t + 1), a')$，再用另一份 $Q_2$ 评估其价值）：
+   即“#strong[最大值的期望不小于期望的最大值]”，导致 Q-Learning 系统性地高估（Overestimate）动作价值。#strong[Double Q-Learning]（Hasselt, 2010）通过维护两份相互独立的价值估计器 $Q_1, Q_2$ 来解耦“动作选择”与“价值评估”（每步以 $0.5$ 概率随机选择其一进行更新，如用 $Q_1$ 选出贪心动作 $a^star = arg max_(a') Q_1(S_(t + 1), a')$，再用另一份估计器 $Q_2$ 评估该动作的价值）：
    $
      Q_1 (S_t, A_t) arrow.l Q_1 (S_t, A_t) + alpha [R_(t + 1) + gamma #mhlg($Q_2 (S_(t + 1), #mhl($arg max_(a') Q_1 (S_(t + 1), a')$))$) - Q_1 (S_t, A_t)] ,
    $ <eq-double-q-learning>
-   另一半步骤交换 $Q_1, Q_2$ 的角色。若 $Q_2$ 无偏且其评估误差与 $Q_1$ 的选择误差条件独立，则 $bb(E)[Q_2 (s', a^star)] = q_star (s', a^star) lt.eq max_(a') q_star (s', a')$，目标项不再系统性高估（可能出现轻微低估）。Double DQN 与 TD3 的 Clipped Double-Q 采用同一思路。
-   - #strong[病灶]：@eq-td-control 用同一份带噪估计既#strong[选]动作又#strong[评]价值，由 Jensen 不等式（@eq-maximization-bias）必有系统性高估；#strong[改动]：把"选"与"评"拆到两份独立估计器上，估计器层面解耦；#strong[代价与方程]：双倍存储与两次更新，偏差反转为轻微低估。方程仍是 @eq-opt-cond-qq，这是一处纯估计器层面的补丁，不动方程形态。
+   另一半步骤则对称地交换 $Q_1, Q_2$ 的角色。若 $Q_2$ 无偏且其评估误差与 $Q_1$ 的选择误差条件独立，则 $bb(E)[Q_2 (s', a^star)] = q_star (s', a^star) lt.eq max_(a') q_star (s', a')$，从而消除正向最大化偏差（可能表现为轻微低估）。深度强化学习中的 Double DQN 与 TD3 的截断双评论家（Clipped Double-Q）均沿用了这一去偏机制。
+   - #strong[方法动机与核心机制]：克服 @eq-td-control 因复用同一带噪估计器同时执行动作最大化选择与价值评估所导致的 Jensen 不等式正向偏差（@eq-maximization-bias），通过双估计器交叉评估实现统计解耦。
+   - #strong[理论性质与所依方程]：底层不动点方程仍为贝尔曼最优方程 @eq-opt-cond-qq（属纯统计估计器层面的去偏修正，不改变算子不动点）；以双倍存储开销为代价消除了最大化高估偏差。
 
-5. #strong[从表格型随机近似到参数化函数近似（DQN 与随机梯度下降）]：
-   当状态空间 $cal(S)$ 为高维或连续空间时，用参数化函数 $hat(v)(s; bold(theta))$ 或 $hat(q)(s, a; bold(theta))$（如深度神经网络）近似价值函数。此时对均方 TD 误差 $cal(L)(bold(theta)) = 1 / 2 [y_t^upright("TD") - hat(q)(S_t, A_t; bold(theta))]^2$（将目标网络参数 $bold(theta)^-$ 视为固定常数，即半梯度 Semi-gradient）做随机梯度下降，即为 #strong[DQN（Deep Q-Network）] 的参数更新律：
+5. #strong[从表格型随机近似到参数化函数近似（DQN 与半梯度更新）]：
+   当状态空间 $cal(S)$ 为高维或连续空间时，表格型存储不再可行，需采用参数化函数 $hat(v)(s; bold(theta))$ 或 $hat(q)(s, a; bold(theta))$（如深度神经网络）逼近价值函数。此时将目标网络参数 $bold(theta)^-$ 视为固定常数（即对自举目标不反传梯度的#strong[半梯度法]，Semi-gradient Method），对均方 TD 误差 $cal(L)(bold(theta)) = 1 / 2 [y_t^upright("TD") - hat(q)(S_t, A_t; bold(theta))]^2$ 执行随机梯度下降，即得到 #strong[DQN（Deep Q-Network）] 的参数更新律：
    $
      bold(theta)_(t + 1) = bold(theta)_t + #mhl($alpha$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($hat(q)(S_(t + 1), a'; bold(theta)^-)$) - hat(q)(S_t, A_t; bold(theta)_t)] #mhlb($nabla_(bold(theta)) hat(q)(S_t, A_t; bold(theta)_t)$) .
    $ <eq-dqn-update>
-   当取表格型独热特征表示（One-Hot Feature）时，$nabla_(bold(theta)) hat(q)(S_t, A_t; bold(theta)) = bold(e)_((S_t, A_t))$，@eq-dqn-update 精确退化为表格型 Q-Learning（@eq-td-control）。DQN 另以经验回放（Experience Replay）打破样本相关性，并周期性复制 $bold(theta)^- arrow.l bold(theta)$。
+   当取表格型独热特征表示（One-Hot Feature）时，$nabla_(bold(theta)) hat(q)(S_t, A_t; bold(theta)) = bold(e)_((S_t, A_t))$，@eq-dqn-update 精确退化为表格型 Q-Learning（@eq-td-control）。DQN 同时引入经验回放（Experience Replay）以打破轨迹样本的时序相关性，并通过周期性同步目标网络参数 $bold(theta)^- arrow.l bold(theta)$ 减缓自举目标的非平稳漂移。
 
-   #strong[函数近似下的收敛边界]：上述 TD(0)、SARSA、Q-Learning 的以概率 $1$ 收敛结论均限于表格型表示。参数化以后，半梯度更新不再是任何固定目标函数的梯度下降。已知结论为：同轨线性 TD(0) 收敛到 TD 不动点，其误差不超过最优线性逼近误差的 $1 \/ (1 - gamma)$ 倍（Tsitsiklis & Van Roy, 1997）；函数近似、自举与离轨训练三者同时出现（#strong[致命三元组]，Deadly Triad）时，即使线性特征也可能发散（Baird 反例，1995）。DQN 等深度方法因此没有一般性收敛保证，稳定性依赖目标网络、经验回放等工程措施。
-   - #strong[病灶]：表格型只对有限状态空间成立，实际问题的 $cal(S)$ 高维或连续，存不下一张表；#strong[改动]：用参数化函数 $hat(q)(s, a; bold(theta))$ 代替表，更新改为沿半梯度下降（@eq-dqn-update）；#strong[代价与方程]：$max$ 目标本身没变，但"以概率 $1$ 收敛到不动点"这一结论不再成立——函数近似、自举、离轨三者同时出现即致命三元组，只能靠目标网络与经验回放压制发散。
+   #strong[函数近似下的收敛性边界与致命三元组]：前述 TD(0)、SARSA 与 Q-Learning 以概率 $1$ 收敛的理论保证均建立在有限表格型表示之上。引入参数化函数近似后，贝尔曼算子作用后的结果一般不再落入函数近似子空间内，且半梯度更新并非任何固定目标函数的真实梯度下降。经典理论表明：在同轨采样下，线性函数近似 TD(0) 仍收敛于投影贝尔曼方程的唯一不动点，其渐近误差不超过最优线性逼近误差的 $1 \/ (1 - gamma)$ 倍（Tsitsiklis & Van Roy, 1997）；然而，当#strong[函数近似（Function Approximation）]、#strong[自举（Bootstrapping）]与#strong[离轨训练（Off-Policy Training）]三者同时存在——即构成所谓的#strong[致命三元组（Deadly Triad）]时，复合算子不再保证具有压缩映射性质，即便在线性函数近似下迭代参数亦可能发散至无穷（Baird, 1995）。因此，DQN 等非线性离轨自举方法在理论上缺乏全局收敛保证，其训练稳定性高度依赖目标网络与经验回放等稳定化机制。
+   - #strong[方法动机与核心机制]：突破表格型方法在大规模或连续状态空间中的维数灾难，以参数化近似器 $hat(q)(s, a; bold(theta))$ 替代查找表，并沿半梯度方向更新参数（@eq-dqn-update）。
+   - #strong[理论性质与所依方程]：目标结构仍基于贝尔曼最优方程 @eq-opt-cond-qq；具备跨状态泛化能力，但因同时触发“致命三元组”而丧失 Banach 压缩不动点收敛保证。
 
 #divider()
 
-== 补丁三 · 离轨多步的方差控制（截断重要性采样）
+== 核心扩展三 · 离轨多步估计的方差控制（截断重要性采样与回溯修正）
 <sec-offpolicy-multistep>
-第一块补丁（#link(<sec-importance-sampling>)[第 6.4 节]）把"样本分布不对"修好了：乘上重要性采样比 $rho$，估计量就无偏。代价写在 @eq-per-decision-is 里——$rho$ 是连乘，方差随幕长增长，几幕之后普通 IS 的估计在数值上就不可用了。而#link(<sec-td-estimation>)[第 6.5 节]又说，多步回报能显著降低自举偏差。两者合在一起就撞上了这个矛盾：我们既想要离轨（复用旧数据、并行采集），又想要多步（减小偏差），而离轨多步的乘性权重让方差不可控。
+#link(<sec-importance-sampling>)[第 6.4 节]表明，在离轨设定下乘以重要性采样比 $rho$ 可恢复多步回报期望的无偏性，但连乘结构（@eq-importance-sampling-ratio、@eq-per-decision-is）会导致估计方差随步数呈指数级增长；另一方面，#link(<sec-td-estimation>)[第 6.5 节]指出，引入多步自举回报（$n$-步 TD 与 TD($lambda$)）能够有效加快信用分配并降低单步自举偏差。当试图将“离轨数据复用”与“多步自举回报”相结合时，便面临乘性似然比带来的严重方差失控问题。
 
-本节的补丁只有一句话：把权重截断。
+为在离轨多步估计中兼顾数值稳定性与收敛性能，核心思路是对重要性采样比率引入#strong[逐项截断（Truncation）]。根据截断位置是直接作用于无自举回报、仅作用于多步资格迹回溯系数，还是同时作用于单步 TD 误差本身，可严格区分出以下三类具有不同不动点性质的机制：
 
-1. #strong[截断重要性采样（Truncated IS）]：
-   把连乘权重 $rho_(t + 1 : t + n) = product_(k = t + 1)^(t + n) frac(pi(A_k divides S_k), b(A_k divides S_k))$ 逐项截断到 $bar(c)$ 以内：
+1. #strong[朴素截断重要性采样（无自举校正时的渐近偏差）]：
+   若直接在多步连乘似然比 $rho_(t + 1 : t + n) = product_(k = t + 1)^(t + n) frac(pi(A_k divides S_k), b(A_k divides S_k))$ 中将每一项截断于上界常数 $bar(c) > 0$：
    $
-     bar(rho)_(t + 1 : t + n) eq.dot product_(k = t + 1)^(t + n) min (bar(c), frac(pi(A_k divides S_k), b(A_k divides S_k))) .
+     bar(rho)_(t + 1 : t + n) eq.dot product_(k = t + 1)^(t + n) min (bar(c), frac(pi(A_k divides S_k), b(A_k divides S_k))) ,
    $ <eq-truncated-is>
-   每项都以概率 $1$ 有界，连乘也就有界，方差随之可控。代价直接来自 $min$：截断改变了权重的期望，估计量#strong[有偏]，且这个偏差不会随样本量消失。这与#link(<sec-importance-sampling>)[第 6.4 节]第 3 项 WIS 的性质同向：都是"用有界换无偏"。
+   则每一因子均以概率 $1$ 有界，连乘积的方差随之受到严格控制。然而，若直接将 @eq-truncated-is 用于对完整回报 $G_t$ 加权而不做自举误差修正，则由于 $min(bar(c), dot.op)$ 严格压低了大权重样本的期望贡献，估计量将产生无法随样本量增大而消除的渐近偏差。
 
-2. #strong[Retrace($lambda$)]：
-   Retrace 把截断放进 $lambda$-回报的递推里，产出一个#strong[递归的]、带截断权重的多步目标（Munos et al., 2016）：
+2. #strong[Retrace($lambda$) 算法（截断多步回溯系数，严格保持不动点 $q_pi$ 不变）]：
+   为在截断似然比以控制方差的同时消除渐近偏差，Munos et al. (2016) 提出了基于动作价值的离轨多步估计算法 #strong[Retrace($lambda$)]。其核心思想是将多步更新写成沿轨迹对#strong[动作价值在目标策略期望下的单步 TD 误差]的加权累加：
    $
-     Q^upright("Retrace") (S_t, A_t) eq.dot Q(S_t, A_t) + sum_(k = t)^(T - 1) gamma^(k - t) (product_(j = t + 1)^k bar(c)_j) delta_k, #h(1.5em) bar(c)_j = min(bar(c), frac(pi(A_j divides S_j), b(A_j divides S_j))) ,
+     Q^upright("Retrace") (S_t, A_t) eq.dot Q(S_t, A_t) + sum_(k = t)^(T - 1) gamma^(k - t) (#mhl($product_(j = t + 1)^k bar(c)_j$)) #mhlg($delta_k^Q$), #h(1.5em) bar(c)_j = lambda min(bar(c), frac(pi(A_j divides S_j), b(A_j divides S_j))) ,
    $ <eq-retrace>
-   其中 $delta_k$ 是第 $k$ 步的 TD 误差（@eq-td-target-error）。当目标策略与行为策略接近时 $bar(c)_j approx 1$，@eq-retrace 退化为普通的 TD($lambda$) 式累加；两者差异很大时，截断把权重压回 $bar(c)$ 以内。Retrace 的一个重要性质是#strong[评估的安全性]：只要行为策略覆盖目标策略（@eq-is-coverage），即使 $pi$ 与 $b$ 差别很大，估计量的方差仍有界。
+   （注：文献中常取 $bar(c) = 1$ 并把 $lambda$ 并入迹系数或写为 $lambda^((k - t)) product_(j = t + 1)^k min(bar(c), frac(pi(A_j divides S_j), b(A_j divides S_j)))$，二者仅差记号写法。）其中#strong[动作价值的单步期望 TD 误差 $delta_k^Q$] 定义为（对比状态价值的一步 TD 误差 @eq-td-target-error）：
+   $
+     delta_k^Q eq.dot R_(k + 1) + gamma #mhlb($bb(E)_(A' tilde.op pi(dot.op divides S_(k + 1))) [Q(S_(k + 1), A')]$) - Q(S_k, A_k) = R_(k + 1) + gamma sum_(a' in cal(A)) pi(a' divides S_(k + 1)) Q(S_(k + 1), a') - Q(S_k, A_k) .
+   $ <eq-retrace-td-error>
+   #strong[不动点不变性定理（Munos et al., 2016, Theorem 1）]：与直接对回报截断不同，Retrace($lambda$) 算子的唯一不动点#strong[严格保持为目标策略的真实动作价值 $q_pi$，不因截断阈值 $bar(c)$ 而发生偏移]！其数学机理在于：当 $Q = q_pi$ 时，由动作价值贝尔曼期望方程（@eq-exp-explicit-qq），对轨迹上任意时刻的状态-动作对 $(S_k, A_k)$，单步期望 TD 误差的条件期望均精确为零：
+   $
+     bb(E)_b [delta_k^Q divides S_k, A_k] = bb(E)_p [R_(k + 1) + gamma sum_(a') pi(a' divides S_(k + 1)) q_pi (S_(k + 1), a') divides S_k, A_k] - q_pi (S_k, A_k) = 0 .
+   $
+   由于在时刻 $k$ 之前决定的非负截断迹系数 $product_(j = t + 1)^k bar(c)_j$ 关于给定 $(S_k, A_k)$ 后的环境一步转移 $(R_(k + 1), S_(k + 1))$ 是条件已知的常数，由全期望公式（#link(<lem-2>)[引理 2]）与条件已知量提取性质（P9），@eq-retrace 中求和号的每一项在 $Q = q_pi$ 处的期望均恒等于零，故 $bb(E)_b [Q^upright("Retrace")(s, a)] = q_pi (s, a)$。不仅如此，当取 $bar(c) lt.eq 1$ 时，对任意行为策略 $b$ 与目标策略 $pi$，Retrace 算子在最大模范数下恒为压缩映射（无发散风险）。在此机制下，截断系数 $bar(c)_j$ 仅起到#strong[自适应调节有效多步自举视野]的作用：当 $pi$ 与 $b$ 接近时保留长视野多步回溯以加速收敛；当 $pi$ 与 $b$ 偏离较大时自动衰减后续项权重、平滑退化向单步 Expected SARSA，从而在不改变不动点 $q_pi$ 的前提下实现方差有界。
 
-3. #strong[V-trace]：
-   V-trace 是同一思路面向#strong[分布式 Actor-Learner 架构]的版本（Espeholt et al., 2018）：它用两个截断常数分别控制"目标不变性"与"方差"，并显式修正策略滞后带来的偏差。结论相同——截断换来有界方差，代价是目标价值出现依赖截断常数的偏移。
+3. #strong[V-trace 算法（同时截断单步 TD 误差权重与回溯迹系数，改变算子不动点）]：
+   在估计#strong[状态价值 $V(s)$] 的分布式 Actor-Learner 架构（IMPALA, Espeholt et al., 2018）中，由于状态价值的单步 TD 误差 $delta_k^V eq.dot R_(k + 1) + gamma V(S_(k + 1)) - V(S_k)$ 依赖于在时刻 $k$ 按行为策略 $b$ 实际采样的动作 $A_k$（而非像 @eq-retrace-td-error 那样在给定 $A_k$ 后只剩环境转移），即使在 $V = v_pi$ 处仍有 $bb(E)_b [delta_k^V divides S_k] = (cal(T)^b_V v_pi)(S_k) - v_pi (S_k) eq.not 0$。因此，必须对时刻 $k$ 的单步 TD 误差本身也乘以重要性采样比进行修正。#strong[V-trace] 为此引入两个独立的截断阈值 $bar(rho) gt.eq bar(c)$，分别定义单步误差截断权重 $rho_k eq.dot min(bar(rho), frac(pi(A_k divides S_k), b(A_k divides S_k)))$ 与多步回溯迹系数 $c_j eq.dot min(bar(c), frac(pi(A_j divides S_j), b(A_j divides S_j)))$，构造 $n$-步状态价值目标：
+   $
+     v_t^upright("V-trace") eq.dot V(S_t) + sum_(k = t)^(t + n - 1) gamma^(k - t) (#mhl($product_(j = t)^(k - 1) c_j$)) #mhlb($rho_k$) #mhlg($delta_k^V$) .
+   $ <eq-vtrace>
+   #strong[两个截断阈值的角色分工与不动点偏移]：
+   - 迹系数 $c_j$（受 $bar(c)$ 截断）与 Retrace 中的 $bar(c)_j$ 作用相同：它只影响多步误差向前回溯的衰减速度（收缩模长），#strong[不改变算子的不动点]；
+   - 单步权重 $rho_k$（受 $bar(rho)$ 截断）直接决定了单步贝尔曼更新所逼近的目标策略：当取 $bar(rho) = oo$（不截断 $rho_k$）时，不动点仍精确为 $v_pi$；当为抑制单步极端权重方差而取有限阈值 $bar(rho) < oo$ 时，V-trace 算子的唯一不动点将#strong[偏移为介于行为策略 $b$ 与目标策略 $pi$ 之间的软截断混合策略价值 $v_(pi_(bar(rho)))$]，其中等效目标策略定义为：
+     $
+       pi_(bar(rho)) (a divides s) eq.dot frac(min(bar(rho) thin b(a divides s), thin pi(a divides s)), sum_(a' in cal(A)) min(bar(rho) thin b(a' divides s), thin pi(a' divides s))) .
+     $ <eq-vtrace-fixed-point-policy>
 
-4. #strong[与贝尔曼方程的关系]：这里的方程形态第一次#strong[发生变化]。@eq-bellman-exp-vv 的右端是对后继状态的期望；@eq-retrace 的右端则是"沿轨迹累加带截断权重的 TD 误差"。形式上它仍是一个不动点方程，但#strong[不动点不再是 $v_pi$]，而是某个由 $bar(c)$ 决定的、介于 $v_b$ 与 $v_pi$ 之间的值。这是本章唯一一处"为了控制方差而接受目标改变"的地方，也是它与前三块补丁的根本区别：前三块都是让估计量去逼近同一个目标，这一块是#strong[换了一个更好算的目标]。
+4. #strong[与贝尔曼方程的关系辨析]：
+   对比上述机制可以清晰地界定截断操作对贝尔曼不动点的不同影响：在动作价值估计中，Retrace($lambda$)（@eq-retrace）利用给定 $(S_k, A_k)$ 后单步期望 TD 误差为零的性质，仅截断多步传递系数 $bar(c)_j$，从而在保证方差有界的同时#strong[严格保留贝尔曼期望方程的不动点 $q_pi$ 不变]；而在状态价值估计中，V-trace（@eq-vtrace）由于必须在单步 TD 误差上乘以似然比 $rho_k$，当对 $rho_k$ 施加有限截断 $bar(rho) < oo$ 时，实质上#strong[改写了所求解的贝尔曼期望方程本身]，以容忍目标不动点从 $v_pi$ 微小偏移至 $v_(pi_(bar(rho)))$ 为代价，换取大规模异步离轨训练下的有界方差与收缩稳定性。
 
 #divider()
 
-== 三类估计方法的回溯结构对比与补丁总览
+== 三类估计方法的回溯结构对比与核心扩展总览
 <sec-estimation-comparison>
-综合#link(<sec-dp-fixed-point>)[第 6.2]--#link(<sec-offpolicy-multistep>)[6.7 节]，动态规划（DP）、蒙特卡洛（MC）与时序差分（TD）是强化学习价值估计的三类基本方法。三者在马尔可夫决策树上的回溯广度（Width）与深度（Depth）不同（见 @fig-dp-mc-td-backups），针对状态价值与动作价值的全部估计算法及统计特征汇总于 @tab-all-value-estimators。
+综合#link(<sec-dp-fixed-point>)[第 6.2]--#link(<sec-offpolicy-multistep>)[6.7 节]，动态规划（DP）、蒙特卡洛（MC）与时序差分（TD）构成了强化学习价值估计的三类基本范式。三者在马尔可夫决策树上的回溯广度（Width）与深度（Depth）截然不同（见 @fig-dp-mc-td-backups），针对状态价值与动作价值的全部估计算法及统计特征汇总于 @tab-all-value-estimators。
 
 #figure(
   grid(
@@ -1756,41 +1781,41 @@ $
   )),
 ) <tab-all-value-estimators>
 
-三条路线各自暴露了自身无法解决的问题，本章用三块补丁分别处理。补丁不改变"采样代替求和"这一基本立场，只改动目标值 $y_k$ 的构造方式；三块补丁的病灶、做法、代价与被改动的方程汇总于 @tab-estimation-patches。
+在三条基本估计路线之上，为应对采样分布偏移、无模型最优控制与离轨多步高方差，本章建立了三项核心扩展机制。这些扩展机制在保持通用增量更新框架不变的前提下，通过对样本重加权或重塑目标值 $y_k$ 实现功能扩展；三项扩展机制的核心问题、修正方案、统计代价及所对应的底层方程汇总于 @tab-estimation-patches。
 
 #figure(
-  caption: [三类基本估计路线之上的三块补丁。前三列说明"为什么打补丁"与"补丁怎么打"，后三列说明"打补丁付出什么代价"以及被打补丁的是贝尔曼方程链条上的哪一环],
+  caption: [三类基本估计路线之上的三项核心扩展机制汇总：问题症结、核心修正机制、统计代价以及与贝尔曼不动点方程的对应关系],
   text(size: 8.4pt, table(
     columns: (1.15fr, 0.9fr, 1.7fr, 1.35fr, 1.15fr, 1fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon, left + horizon, left + horizon),
     table.header(
-      [病灶],
-      [补丁],
-      [做法],
-      [代价],
-      [对应方程],
+      [核心问题],
+      [扩展机制],
+      [方法修正],
+      [统计代价与理论性质],
+      [对应方程与不动点],
       [代表算法],
     ),
     table.hline(),
-    [样本分布与目标分布不一致：样本来自 $b$，却要求 $pi$ 的期望，$bb(E)_b [G_t] eq.not q_pi (s, a)$],
-    [补丁一 \ 重要性采样 \ #link(<sec-importance-sampling>)[6.4 节]],
-    [乘轨迹概率比 $rho_(t + 1:T - 1)$，环境转移项相消，只剩策略比；加权 IS 再除以权重和 $W$ 归一化],
-    [方差随幕长指数增长；WIS 有偏，仅渐近无偏],
-    [贝尔曼期望方程 \ @eq-bellman-exp-vv \ （方程不变，只改样本权重）],
-    [离轨 MC \ OIS / WIS],
+    [样本分布与目标分布错配：样本由行为策略 $b$ 生成，直接求均值收敛于 $q_b$ 而非 $q_pi$（或 $v_b$ 而非 $v_pi$）],
+    [扩展一 \ 重要性采样 \ #link(<sec-importance-sampling>)[6.4 节]],
+    [乘以轨迹似然比（估 $q_pi$ 用 $rho_(t + 1:T - 1)$，估 $v_pi$ 用 $rho_(t:T - 1)$），环境转移概率相消；加权 IS 以权重和归一化],
+    [OIS 无偏但方差随幕长指数增长；WIS 方差有界，有限样本有偏、渐近无偏],
+    [贝尔曼期望方程 \ @eq-bellman-exp-vv / @eq-bellman-exp-qq \ （不动点保持 $v_pi, q_pi$）],
+    [离轨 MC \ OIS / WIS \ 逐决策 IS],
     table.hline(stroke: 0.6pt + accent),
-    [策略层算子是加权平均 $sum_a pi(a divides s)$，而控制目标要求取最大值；且 $max$ 是凸函数，对含噪估计取最大会系统性高估],
-    [补丁二 \ 期望换最大值 \ #link(<sec-td-action-value>)[6.6 节]],
-    [把目标中的 $sum_(a') pi(a' divides s')$ 换成 $max_(a')$；目标不再依赖采样动作，离轨由此成为可能],
-    [最大化偏差；叠加函数近似后可能发散],
-    [贝尔曼最优方程 \ @eq-opt-cond-qq],
-    [$Q$-Learning \ Double $Q$-Learning \ DQN],
+    [无模型下无法从 $V$ 提取策略；策略层期望算子无法直接求得最优价值，且对带噪估计取最大会产生正向偏差],
+    [扩展二 \ 动作价值与贪心最大化 \ #link(<sec-td-action-value>)[6.6 节]],
+    [直接估计 $Q$，将目标中策略层求和 $sum_(a') pi(a' divides s')$ 替换为 $max_(a')$（天然支持单步离轨）；双估计器解耦选与评],
+    [单估计器产生最大化高估偏差；结合函数近似与离轨自举触发“致命三元组”可致发散],
+    [贝尔曼最优方程 \ @eq-opt-cond-qq \ （不动点为 $q_star$）],
+    [$Q$-Learning \ Double $Q$ \ DQN],
     table.hline(stroke: 0.6pt + accent),
-    [离轨与多步叠加：$rho$ 沿轨迹连乘，方差不可控，且离轨多步目标同时受两处噪声影响],
-    [补丁三 \ 截断重要性采样 \ #link(<sec-offpolicy-multistep>)[6.7 节]],
-    [对比率逐项截断到 $bar(c)$，再以 $lambda$ 加权做树回溯平均；V-trace 在此之上再截断 TD 误差],
-    [目标有偏；截断改写了不动点本身],
-    [Retrace 方程 \ @eq-retrace \ （本章唯一改变不动点形态的补丁）],
+    [离轨与多步回报叠加时，似然比沿轨迹连乘导致方差失控],
+    [扩展三 \ 截断重要性采样与回溯 \ #link(<sec-offpolicy-multistep>)[6.7 节]],
+    [Retrace($lambda$) 仅截断多步回溯迹系数 $bar(c)_j$；V-trace 同时以 $bar(c)$ 截断迹系数并以 $bar(rho)$ 截断单步 TD 误差权重 $rho_k$],
+    [收缩有效多步视野以保证方差有界；当 V-trace 取 $bar(rho) < oo$ 时引入渐近目标偏差],
+    [Retrace 保持不动点 $q_pi$（@eq-retrace）；V-trace（$bar(rho) < oo$）不动点偏移为 $v_(pi_(bar(rho)))$（@eq-vtrace）],
     [Retrace($lambda$) \ V-trace],
   )),
 ) <tab-estimation-patches>
@@ -1798,46 +1823,46 @@ $
 #divider()
 
 // ============================================================
-//  第 7 章：策略梯度——不解方程，直接对期望目标求导
+//  第 7 章：策略梯度——直接对期望回报目标求导
 // ============================================================
-= 策略梯度：不解方程，直接对期望目标求导
+= 策略梯度：直接对期望回报目标求导
 <sec-policy-gradient>
 
-#link(<sec-value-estimation>)[第 6 章]的三条路线有一个共同前提：把贝尔曼方程当作#strong[求解对象]，先估计出 $v_pi$ 或 $q_star$，再从价值函数中读出策略。本章给出另一条路线：把策略本身写成参数 $bold(theta)$ 的函数，直接对#strong[期望回报目标] $J(bold(theta))$ 求梯度并做梯度上升。这条路线不再以贝尔曼方程为求解对象，却仍然借用了第 6 章的全部期望估计工具——只是估计的对象从"价值"换成了"梯度"。本章依次给出：记号与设定的局部扩展（#link(<sec-pg-setup>)[第 7.1 节]）、值方法的三处失效（#link(<sec-pg-motivation>)[第 7.2 节]）、策略梯度定理的完整推导（#link(<sec-pg-theorem>)[第 7.3 节]）、REINFORCE（#link(<sec-reinforce>)[第 7.4 节]）、基线与优势函数（#link(<sec-pg-baseline>)[第 7.5 节]）、Actor-Critic（#link(<sec-actor-critic>)[第 7.6 节]）、广义优势估计 GAE（#link(<sec-gae>)[第 7.7 节]）、与贝尔曼方程的关系边界（#link(<sec-pg-vs-bellman>)[第 7.8 节]），最后是工程变体的动机与代价（#link(<sec-pg-variants>)[第 7.9 节]）。
-这条线在本章最后一节延伸到本代大语言模型的 RLVR 算法族：同一裁剪外壳，三个坐标（#link(<sec-rlvr-lineage>)[第 7.10 节]）。
+#link(<sec-value-estimation>)[第 6 章]的三条估计路线均建立在同一个前提之上：将贝尔曼方程作为#strong[求解对象]，先估计出价值函数 $v_pi$ 或 $q_star$，再通过贪心算子导出控制策略。本章阐述强化学习的另一条核心范式：将策略显式建模为关于参数 $bold(theta)$ 的可微函数 $pi_bold(theta) (a divides s)$，直接对#strong[期望回报目标函数] $J(bold(theta))$ 求梯度并执行梯度上升。这一范式不再以求解贝尔曼不动点方程为目标，但全面复用了第 6 章所建立的期望估计工具——其统计估计的对象由“状态/动作价值”转化为“策略目标的梯度”。本章依次论述：记号与问题设定的局部扩展（#link(<sec-pg-setup>)[第 7.1 节]）、基于价值的方法在三类场景下的理论局限（#link(<sec-pg-motivation>)[第 7.2 节]）、策略梯度定理的严密推导（#link(<sec-pg-theorem>)[第 7.3 节]）、蒙特卡洛策略梯度 REINFORCE（#link(<sec-reinforce>)[第 7.4 节]）、状态基线与优势函数（#link(<sec-pg-baseline>)[第 7.5 节]）、Actor-Critic 架构与兼容函数近似（#link(<sec-actor-critic>)[第 7.6 节]）、广义优势估计 GAE（#link(<sec-gae>)[第 7.7 节]）、策略梯度与贝尔曼方程的理论边界（#link(<sec-pg-vs-bellman>)[第 7.8 节]），以及针对三类核心优化难题的代表性算法变体（#link(<sec-pg-variants>)[第 7.9 节]）。
+本章最后一节将信任域裁剪框架进一步延伸至大语言模型的可验证奖励强化学习（RLVR）算法谱系，从三个核心设计维度统一剖析 GRPO、DAPO、GSPO 与 DCPO 的演进逻辑（#link(<sec-rlvr-lineage>)[第 7.10 节]）。
 
 #divider()
 
 == 记号与设定的局部扩展
 <sec-pg-setup>
 
-第 1--6 章一直假定动作空间 $cal(A)$ 有限、策略是概率分布 $pi(a divides s)$、期望写成求和。本章需要用到#strong[连续动作空间]与#strong[参数化策略]，因此只在本章局部放宽记号，不回改前文：
+第 1--6 章均假定动作空间 $cal(A)$ 为有限集、策略为离散概率分布 $pi(a divides s)$、期望运算写为有限求和。为涵盖#strong[连续动作空间]与#strong[参数化策略]，本章对记号作如下局部扩展（不改变前文约定）：
 
-1. #strong[动作空间可含连续分量]：设 $cal(A) subset.eq bb(R)^m$，策略写为关于 $a$ 的#strong[概率密度] $pi(a divides s)$，即对任意可测集 $B subset.eq cal(A)$ 有 $Pr(A_t in B divides S_t = s) = integral_B pi(a divides s) dif a$。当 $cal(A)$ 有限时，把积分换回求和 $sum_(a in cal(A))$，所有公式即退化为前文的写法；本章统一使用积分记号，求和形式是它的特例。
-2. #strong[策略参数化]：策略由参数 $bold(theta) in bb(R)^d$ 决定，记为 $pi_bold(theta) (a divides s)$。例如离散动作可取 softmax 策略 $pi_bold(theta) (a divides s) prop exp(bold(theta)^top bold(phi)(s, a))$，连续动作可取高斯策略，其均值与方差由 $bold(theta)$ 参数化。
-3. #strong[正性假设]：为使用 $log pi_bold(theta)$ 及其梯度，要求对所考虑的状态与动作 $pi_bold(theta) (a divides s) > 0$，且 $pi_bold(theta)$ 关于 $bold(theta)$ 可微。
-4. #strong[期望回报目标]：以初始状态分布 $d_0$ 下的期望价值为目标
+1. #strong[动作空间可含连续分量]：设 $cal(A) subset.eq bb(R)^m$，策略写为关于动作 $a$ 的#strong[条件概率密度] $pi(a divides s)$，即对任意可测集 $B subset.eq cal(A)$ 有 $Pr(A_t in B divides S_t = s) = integral_B pi(a divides s) dif a$。当 $cal(A)$ 为有限离散集时，只需将积分符号替换为求和符号 $sum_(a in cal(A))$（对应计数测度下的 Radon-Nikodym 导数），所有公式即退化为前文形式；本章统一采用积分记号。
+2. #strong[策略参数化]：策略由参数向量 $bold(theta) in bb(R)^d$ 参数化，记为 $pi_bold(theta) (a divides s)$。例如离散动作空间常采用 Softmax 参数化 $pi_bold(theta) (a divides s) prop exp(bold(theta)^top bold(phi)(s, a))$，连续动作空间常采用均值与协方差由神经网络参数化的高斯策略。
+3. #strong[正则性与可微性假设]：为保证对数策略梯度 $nabla_bold(theta) log pi_bold(theta) (a divides s)$ 良定义，假设在所考虑的支撑集上 $pi_bold(theta) (a divides s) > 0$ 且关于 $bold(theta)$ 连续可微。
+4. #strong[期望回报性能目标]：定义策略优化的性能目标函数为初始状态分布 $d_0$ 下的期望折扣回报：
    $
      J(bold(theta)) eq.dot sum_(s in cal(S)) d_0 (s) v_(pi_bold(theta)) (s) = bb(E)_(S_0 tilde d_0) [v_(pi_bold(theta)) (S_0)] .
    $ <eq-pg-objective>
-   任务仍是折扣 MDP，折扣因子 $gamma in [0, 1)$；持续任务与平均奖励目标不在本章范围。
-5. #strong[折扣状态访问测度]：记沿策略 $pi$ 运行时的折扣状态访问（未归一化）与归一化形式
+   本章讨论范围仍为折扣因子 $gamma in [0, 1)$ 的折扣 MDP（或有限视野分幕式 MDP）。
+5. #strong[折扣状态访问测度]：定义策略 $pi$ 从初始分布 $d_0$ 出发的未归一化折扣状态访问测度 $mu^pi (s)$ 及其归一化折扣状态分布 $d^pi (s)$ 为：
    $
      mu^pi (s) eq.dot sum_(t = 0)^oo gamma^t Pr(S_t = s divides pi, d_0), quad d^pi (s) eq.dot (1 - gamma) mu^pi (s), quad sum_(s in cal(S)) d^pi (s) = 1 .
    $ <eq-pg-state-visitation>
 
 #divider()
 
-== 动机：值方法在三处失效
+== 方法动机：基于价值的控制方法在三类场景下的理论局限
 <sec-pg-motivation>
 
-第 6 章的算法族都以"先有价值、后有策略"为骨架。这个骨架在三类问题面前失效，而策略梯度恰好绕过它们：
+#link(<sec-value-estimation>)[第 6 章]的控制算法均遵循“先估计动作价值函数、再通过最大化算子提取策略”的间接范式。该范式在以下三类核心场景下面临根本性局限，而直接参数化策略的策略梯度方法则能够自然克服这些困难：
 
-1. #strong[连续动作下 $max_a$ 本身成了优化问题]：值方法读取策略的每一步都要算 $arg max_a q(s, a)$。$cal(A)$ 有限时这是一次查表；$cal(A) subset.eq bb(R)^m$ 时它是每个状态上的非凸优化，既昂贵又无法保证全局最优。策略梯度把 $pi_bold(theta)$ 直接参数化为可采样的密度，动作由采样得到，不需要解 $arg max$。
-2. #strong[最优策略可能必须是随机的]：贪心或 $epsilon$-贪心策略只能逼近确定性策略。在部分可观测或对抗环境中，最优策略本身可能是真正的随机分布（例如需要混合策略的博弈）。参数化随机策略能直接表示这类解，值方法的贪心外环则不能。
-3. #strong[目标错位：价值误差小不等于策略好]：值方法最小化的是 $norm(V - v_pi)$ 或 TD 残差，而真正关心的是 $J(bold(theta))$。均方价值误差与策略性能之间没有单调关系：在某些状态上很小的价值误差，可能诱导出很差的贪心动作。策略梯度直接优化 $J(bold(theta))$，目标与实际目的对齐。
+1. #strong[连续动作空间下贪心最大化 $max_a$ 的计算棘手性]：基于价值的方法在每一步决策与目标更新中均需计算 $arg max_(a in cal(A)) Q(s, a)$。当 $cal(A)$ 为有限小集合时，这仅需常数时间的枚举查表；但当 $cal(A) subset.eq bb(R)^m$ 为高维连续空间时，每次动作选取与贝尔曼目标计算均转化为复杂的非凸全局优化问题，计算开销高昂且难以保证求得全局最优。策略梯度方法直接将 $pi_bold(theta) (a divides s)$ 建模为易于采样的参数化分布，交互时直接从策略分布采样动作，训练时沿参数梯度更新，完全无需对动作空间执行最大化搜索。
+2. #strong[随机最优策略的表征能力]：确定性贪心策略或固定探索率的 $epsilon$-贪心策略无法收敛于任意内部随机策略。然而在部分可观测马尔可夫决策过程（POMDP，存在感知混淆）或多智能体博弈（如石头剪刀布等零和博弈的纳什均衡）中，#strong[最优策略本身必须是随机混合策略]。参数化策略分布 $pi_bold(theta) (a divides s)$ 可自然表征并以任意精度逼近最优随机策略。
+3. #strong[优化目标的一致性与策略变化平滑性]：基于价值的方法最小化的是价值函数的近似残差（如均方 TD 误差），而非直接最大化策略性能指标 $J(bold(theta))$。在函数近似下，极小的动作价值逼近误差可能导致贪心算子 $arg max_a hat(Q)(s, a)$ 发生不连续的跳变，诱发策略性能震荡；相反，策略梯度方法直接沿 $nabla_bold(theta) J(bold(theta))$ 方向连续更新策略参数，保证了策略分布随参数更新平滑演进，且优化目标与真实控制性能严格一致。
 
-两条路线的分野见 @fig-pg-vs-value：它们共享同一个起点（回报的期望），但一个去解不动点方程，另一个去对目标求导。
+两类范式的核心分野见 @fig-pg-vs-value：二者虽同样出发自期望回报定义，但基于价值的方法致力于求解贝尔曼不动点方程，而策略梯度方法则致力于求解性能目标 $J(bold(theta))$ 的一阶平稳点。
 
 #figure(
   {
@@ -1848,373 +1873,390 @@ $
       edge-stroke: 0.7pt + accent,
       node-inset: 5pt,
       node-corner-radius: 3pt,
-      node((1, 0), text(size: 8pt)[*共同起点：回报的期望* \ $J = bb(E)[G_0]$，$v_pi = bb(E)[G_t divides S_t = s]$], fill: accent-soft, width: 62mm),
-      node((0, 1), text(size: 8pt)[*值方法（第 6 章）：解方程* \ 求解对象：贝尔曼期望 / 最优方程的不动点 \ 先估计 $v_pi$ 或 $q_star$，再由 $arg max_a$ 读出策略], fill: hl-blue-fill, stroke: 0.85pt + hl-blue-stroke, width: 62mm),
-      node((2, 1), text(size: 8pt)[*策略梯度（第 7 章）：对目标求导* \ 求解对象：$max_bold(theta) J(bold(theta))$ 的平稳点 \ 直接优化 $pi_bold(theta)$，价值只作为梯度的权重出现], fill: hl-amber-fill, stroke: 0.85pt + hl-amber-stroke, width: 62mm),
-      edge((1, 0), (0, 1), "->", text(size: 7pt)[估计价值], label-side: right),
-      edge((1, 0), (2, 1), "->", text(size: 7pt)[估计梯度], label-side: left),
-      node((0, 2), text(size: 7.4pt)[工具：压缩映射、大数定律、Robbins-Monro], stroke: none, width: 62mm),
-      node((2, 2), text(size: 7.4pt)[工具：对数导数技巧、基线、优势估计 \ （价值估计仅作为 Critic 复用第 6 章）], stroke: none, width: 62mm),
+      node((1, 0), text(size: 8pt)[*共同起点：折扣回报的数学期望* \ $J = bb(E)[G_0]$，$v_pi = bb(E)[G_t divides S_t = s]$], fill: accent-soft, width: 62mm),
+      node((0, 1), text(size: 8pt)[*基于价值的方法（第 6 章）：求解不动点方程* \ 求解对象：贝尔曼期望 / 最优方程的不动点 \ 先估计 $v_pi$ 或 $q_star$，再由 $arg max_a$ 导出策略], fill: hl-blue-fill, stroke: 0.85pt + hl-blue-stroke, width: 62mm),
+      node((2, 1), text(size: 8pt)[*策略梯度方法（第 7 章）：直接对性能目标求导* \ 求解对象：$max_bold(theta) J(bold(theta))$ 的一阶平稳点 \ 直接优化 $pi_bold(theta)$，价值仅作为梯度的加权因子], fill: hl-amber-fill, stroke: 0.85pt + hl-amber-stroke, width: 62mm),
+      edge((1, 0), (0, 1), "->", text(size: 7pt)[估计价值函数], label-side: right),
+      edge((1, 0), (2, 1), "->", text(size: 7pt)[估计目标梯度], label-side: left),
+      node((0, 2), text(size: 7.4pt)[核心工具：压缩映射、大数定律、Robbins-Monro], stroke: none, width: 62mm),
+      node((2, 2), text(size: 7.4pt)[核心工具：对数导数恒等式、状态基线、优势函数估计 \ （Critic 价值估计直接复用第 6 章工具）], stroke: none, width: 62mm),
     )
   },
-  caption: [值方法与策略梯度的分野：共同起点是回报的期望；左支以贝尔曼方程为求解对象，右支以期望目标的平稳点为求解对象，贝尔曼方程在右支中只通过优势函数与 Critic 进入],
+  caption: [基于价值的方法与策略梯度方法的理论分野：二者均出发自期望回报；左支以贝尔曼不动点方程为求解对象，右支以期望目标函数的平稳点为求解对象，贝尔曼方程在右支中仅作为优势函数定义与 Critic 价值估计的辅助工具],
 ) <fig-pg-vs-value>
 
 #divider()
 
-== 策略梯度定理：把梯度写成一个期望
+== 策略梯度定理：将目标梯度表征为期望形式
 <sec-pg-theorem>
 
-要沿 $nabla_bold(theta) J(bold(theta))$ 做梯度上升，首先遇到两个障碍：$J$ 是期望，无法精确求值；$v_(pi_bold(theta))$ 对 $bold(theta)$ 的依赖既有#strong[动作分布]一条，又有#strong[环境状态分布随策略改变]一条，直接展开会没完没了。下面两件工具分别解决它们。
+欲沿梯度方向 $nabla_bold(theta) J(bold(theta))$ 优化策略参数，面临两项核心理论障碍：其一，目标函数 $J(bold(theta))$ 定义为轨迹回报的期望，在无模型设定下无法解析求值，因此必须将梯度 $nabla_bold(theta) J(bold(theta))$ 本身也表征为可通过轨迹采样估计的#strong[数学期望形式]；其二，状态价值 $v_(pi_bold(theta)) (s)$ 对参数 $bold(theta)$ 存在复合依赖——既依赖于单步#strong[动作选择分布] $pi_bold(theta) (a divides s)$，又依赖于由策略变化所诱导的#strong[多步状态访问分布] $mu^(pi_bold(theta)) (s)$，而状态访问分布对 $bold(theta)$ 的导数涉及未知的环境转移概率 $p(s' divides s, a)$。以下引理 7.1 与定理 7.1 分别解决了这两项难题。
 
-#strong[引理 7.1（对数导数技巧，Log-Derivative Trick）] <lem-7.1> 设 $pi_bold(theta) (a divides s) > 0$ 且关于 $bold(theta)$ 可微，则对任意函数 $f(a)$（不要求 $f$ 可微），有恒等式
+#strong[引理 7.1（对数导数恒等式，Log-Derivative Trick / Score Function Identity）] <lem-7.1> 设策略密度 $pi_bold(theta) (a divides s) > 0$ 且关于 $bold(theta)$ 可微，则对任意与 $bold(theta)$ 无关的可积函数 $f(a)$（不要求 $f$ 关于 $a$ 可微），有恒等式：
 $
-  #eqbox([$ integral_(cal(A)) f(a) #mhl($nabla_bold(theta) pi_bold(theta) (a divides s)$) dif a = integral_(cal(A)) pi_bold(theta) (a divides s) f(a) #mhl($nabla_bold(theta) log pi_bold(theta) (a divides s)$) dif a $])
+  #eqbox([$ integral_(cal(A)) f(a) #mhl($nabla_bold(theta) pi_bold(theta) (a divides s)$) dif a = integral_(cal(A)) pi_bold(theta) (a divides s) f(a) #mhl($nabla_bold(theta) log pi_bold(theta) (a divides s)$) dif a = bb(E)_(A tilde.op pi_bold(theta) (dot.op divides s)) [f(A) #mhl($nabla_bold(theta) log pi_bold(theta) (A divides s)$)] $])
 $ <eq-pg-log-derivative>
-即"对密度求导"可改写为"在该密度下对 $nabla_bold(theta) log pi_bold(theta)$ 加权求期望"。特别地，取 $f eq.triple 1$ 得
+即“对概率密度求导后再积分”可等价转化为“在该概率密度下对对数导数 $nabla_bold(theta) log pi_bold(theta) (a divides s)$ 加权求期望”。特别地，取常数函数 $f(a) eq.triple 1$，可得得分函数的零均值性质：
 $
-  integral_(cal(A)) pi_bold(theta) (a divides s) nabla_bold(theta) log pi_bold(theta) (a divides s) dif a = nabla_bold(theta) integral_(cal(A)) pi_bold(theta) (a divides s) dif a = nabla_bold(theta) 1 = bold(0) .
+  bb(E)_(A tilde.op pi_bold(theta) (dot.op divides s)) [nabla_bold(theta) log pi_bold(theta) (A divides s)] = integral_(cal(A)) pi_bold(theta) (a divides s) nabla_bold(theta) log pi_bold(theta) (a divides s) dif a = nabla_bold(theta) integral_(cal(A)) pi_bold(theta) (a divides s) dif a = nabla_bold(theta) 1 = bold(0) .
 $ <eq-pg-score-zero>
 
-#strong[证明]：由 $nabla_bold(theta) log pi_bold(theta) = (nabla_bold(theta) pi_bold(theta)) \/ pi_bold(theta)$（对数求导法则），两边乘 $pi_bold(theta)$ 即得 $nabla_bold(theta) pi_bold(theta) = pi_bold(theta) nabla_bold(theta) log pi_bold(theta)$，代入左端积分即证。取 $f eq.triple 1$ 时积分与求导可交换（假设可微性与可积性条件满足），而 $pi_bold(theta)$ 归一化是#strong[恒等式]，对 $bold(theta)$ 求导恒为零。$#h(2em) square.filled.medium$
+#strong[证明]：由微积分对数求导法则 $nabla_bold(theta) log pi_bold(theta) (a divides s) = frac(nabla_bold(theta) pi_bold(theta) (a divides s), pi_bold(theta) (a divides s))$，两边同乘 $pi_bold(theta) (a divides s)$ 即得 $nabla_bold(theta) pi_bold(theta) (a divides s) = pi_bold(theta) (a divides s) nabla_bold(theta) log pi_bold(theta) (a divides s)$，代入左端积分立得 @eq-pg-log-derivative。取 $f(a) eq.triple 1$ 时，在满足控制收敛定理的正则条件下可交换微分与积分次序；由于概率密度归一化条件 $integral_(cal(A)) pi_bold(theta) (a divides s) dif a = 1$ 对任意 $bold(theta)$ 恒成立，故其关于 $bold(theta)$ 的梯度恒为零向量。$#h(2em) square.filled.medium$
 
-这一条引理是整章的支点：它把"求导"换成了"求期望"，于是第 6 章的采样工具可以照单全收。被采样的量 $nabla_bold(theta) log pi_bold(theta)$ 称为#strong[得分函数]（Score Function）。
+对数导数恒等式（@eq-pg-log-derivative）是策略梯度理论的核心桥梁：它将概率测度的微分算子转化为该测度下的期望算子，从而使#link(<sec-value-estimation>)[第 6 章]的全部期望估计方法均可直接用于梯度估计。其中随机向量 $nabla_bold(theta) log pi_bold(theta) (A divides S)$ 在数理统计中称为#strong[得分函数]（Score Function）。
 
-#strong[定理 7.1（策略梯度定理，Sutton et al. 2000）] <thm-7.1> 在#link(<sec-pg-setup>)[第 7.1 节]的设定下，目标 @eq-pg-objective 的梯度可写成
+#strong[定理 7.1（策略梯度定理，Policy Gradient Theorem, Sutton et al., 2000）] <thm-7.1> 在#link(<sec-pg-setup>)[第 7.1 节]的设定下，性能目标 @eq-pg-objective 关于策略参数 $bold(theta)$ 的梯度满足：
 $
   #eqbox([$ nabla_bold(theta) J(bold(theta)) = sum_(s in cal(S)) #mhlb($mu^(pi_bold(theta)) (s)$) integral_(cal(A)) #mhl($nabla_bold(theta) pi_bold(theta) (a divides s)$) thin #mhlg($q_(pi_bold(theta)) (s, a)$) dif a $])
 $ <eq-pg-theorem-sum>
-其中 $mu^(pi_bold(theta))$ 是 @eq-pg-state-visitation 定义的折扣状态访问测度。等价地，用引理 7.1 与 $d^(pi_bold(theta)) = (1 - gamma) mu^(pi_bold(theta))$ 归一化后写成期望形式
+其中 $mu^(pi_bold(theta)) (s)$ 为 @eq-pg-state-visitation 定义的折扣状态访问测度。注意到展开式中不含状态分布关于 $bold(theta)$ 的导数项 $nabla_bold(theta) mu^(pi_bold(theta)) (s)$。进一步应用#link(<lem-7.1>)[引理 7.1] 并代入归一化分布 $d^(pi_bold(theta)) = (1 - gamma) mu^(pi_bold(theta))$，可将策略梯度等价表征为期望形式：
 $
   #eqbox([$ nabla_bold(theta) J(bold(theta)) = frac(1, 1 - gamma) bb(E)_(S tilde d^(pi_bold(theta)), A tilde pi_bold(theta)) [#mhlg($q_(pi_bold(theta)) (S, A)$) #mhl($nabla_bold(theta) log pi_bold(theta) (A divides S)$)] $])
 $ <eq-pg-theorem-expectation>
 
-#strong[证明（三步：先对 $v$ 求导、借贝尔曼桥接换到 $q$、再展开自递推）]：
+#strong[证明（基于贝尔曼桥接方程的递推展开法）]：
 
-+ #strong[第一步：对 $v_(pi_bold(theta))$ 求导，策略层与环境层拆开。] 由#link(<thm-3.1>)[定理 3.1] 的 $v_pi arrow.r q_pi$ 桥接式 $v_(pi_bold(theta)) (s) = integral_(cal(A)) pi_bold(theta) (a divides s) q_(pi_bold(theta)) (s, a) dif a$，对 $bold(theta)$ 求导并用乘积法则：
++ #strong[第一步：对状态价值 $v_(pi_bold(theta)) (s)$ 求导，分离策略层导数与后继价值导数。] 由#link(<thm-3.1>)[定理 3.1] 的 $v_pi arrow.r q_pi$ 贝尔曼桥接式 $v_(pi_bold(theta)) (s) = integral_(cal(A)) pi_bold(theta) (a divides s) q_(pi_bold(theta)) (s, a) dif a$，对两边关于 $bold(theta)$ 求梯度并应用乘积求导法则：
   $
-    nabla_bold(theta) v_(pi_bold(theta)) (s) = underbrace(integral_(cal(A)) #mhl($nabla_bold(theta) pi_bold(theta) (a divides s)$) q_(pi_bold(theta)) (s, a) dif a, upright("记为 ") phi(s)) + integral_(cal(A)) pi_bold(theta) (a divides s) nabla_bold(theta) q_(pi_bold(theta)) (s, a) dif a .
+    nabla_bold(theta) v_(pi_bold(theta)) (s) = underbrace(integral_(cal(A)) #mhl($nabla_bold(theta) pi_bold(theta) (a divides s)$) q_(pi_bold(theta)) (s, a) dif a, upright("记为局部梯度项 ") phi(s)) + integral_(cal(A)) pi_bold(theta) (a divides s) nabla_bold(theta) q_(pi_bold(theta)) (s, a) dif a .
   $ <eq-pg-proof-step1>
-  记第一项为 $phi(s)$，它就是定理右端"去掉状态求和"的局部形式；第二项仍需处理 $nabla_bold(theta) q_(pi_bold(theta))$。
+  记第一项为 $phi(s)$；第二项包含动作价值对参数的导数 $nabla_bold(theta) q_(pi_bold(theta)) (s, a)$，需借助环境层贝尔曼方程继续展开。
 
-+ #strong[第二步：对 $q$ 用贝尔曼桥接，环境模型项对 $bold(theta)$ 求导为零。] 由#link(<thm-4.2>)[定理 4.2] 的 $q_pi arrow.r v_pi$ 桥接式
++ #strong[第二步：代入 $q_pi arrow.r v_pi$ 贝尔曼桥接式，利用环境模型与策略参数无关的性质化简。] 由#link(<thm-4.2>)[定理 4.2] 的桥接方程
   $ q_(pi_bold(theta)) (s, a) = sum_(s', r) p(s', r divides s, a) [r + gamma v_(pi_bold(theta)) (s')] $，
-  其中环境模型 $p(s', r divides s, a)$ #strong[不依赖] $bold(theta)$（这是 MDP 与策略分离的关键），故
+  由于环境转移与奖励分布 $p(s', r divides s, a)$ 是环境固有属性、#strong[不依赖于策略参数 $bold(theta)$]，对其关于 $bold(theta)$ 求导时即时奖励项导数为零，仅保留后继状态价值的导数项：
   $
     nabla_bold(theta) q_(pi_bold(theta)) (s, a) = gamma sum_(s' in cal(S), thin r in cal(R)) p(s', r divides s, a) nabla_bold(theta) v_(pi_bold(theta)) (s') = gamma sum_(s' in cal(S)) p(s' divides s, a) nabla_bold(theta) v_(pi_bold(theta)) (s') .
   $ <eq-pg-proof-step2>
-  代回 @eq-pg-proof-step1 的第二项，并把对 $a$ 的积分与对 $s'$ 的求和合并为"下一状态的分布" $Pr(S' = s' divides S = s, pi_bold(theta)) = integral_(cal(A)) pi_bold(theta) (a divides s) p(s' divides s, a) dif a$：
+  将 @eq-pg-proof-step2 代回 @eq-pg-proof-step1 的第二项，并将关于 $a$ 的积分与关于 $s'$ 的求和合并为策略 $pi_bold(theta)$ 诱导的单步状态转移概率 $Pr(S_1 = s' divides S_0 = s, pi_bold(theta)) = integral_(cal(A)) pi_bold(theta) (a divides s) p(s' divides s, a) dif a$，可得状态价值梯度的自递推方程：
   $
-    nabla_bold(theta) v_(pi_bold(theta)) (s) = phi(s) + gamma sum_(s' in cal(S)) Pr(S' = s' divides S = s, pi_bold(theta)) nabla_bold(theta) v_(pi_bold(theta)) (s') .
+    nabla_bold(theta) v_(pi_bold(theta)) (s) = phi(s) + gamma sum_(s' in cal(S)) Pr(S_1 = s' divides S_0 = s, pi_bold(theta)) nabla_bold(theta) v_(pi_bold(theta)) (s') .
   $ <eq-pg-proof-recursion>
-  这与#link(<sec-bellman-exp-cond>)[第 3 章]的贝尔曼自递推形式完全一致，只是未知量换成了 $nabla_bold(theta) v_(pi_bold(theta))$、自由项换成了 $phi$。
+  上式与#link(<sec-bellman-exp-cond>)[第 3 章]的状态价值贝尔曼期望方程具有完全相同的线性递推结构（未知向量为 $nabla_bold(theta) v_(pi_bold(theta)) (s)$，单步源项为 $phi(s)$）。
 
-+ #strong[第三步：把自递推展开成沿轨迹的折扣和，$nabla_bold(theta) mu$ 被自动吸收。] 对 @eq-pg-proof-recursion 反复迭代（$gamma < 1$ 保证级数收敛，与#link(<thm-5.9>)[定理 5.9] 的压缩映射同一机制）：
++ #strong[第三步：级数展开自递推关系并合并为折扣状态访问测度。] 对 @eq-pg-proof-recursion 沿时间步反复展开（由 $gamma in [0, 1)$ 及有界性条件保证级数绝对收敛，对应#link(<sec-math-comparison-contraction>)[第 5.4 节]的 Neumann 级数展开 $(I - gamma P_pi)^(-1) = sum_(t = 0)^oo (gamma P_pi)^t$）：
   $
     nabla_bold(theta) v_(pi_bold(theta)) (s) = sum_(t = 0)^oo gamma^t sum_(s' in cal(S)) Pr(S_t = s' divides S_0 = s, pi_bold(theta)) phi(s') .
   $ <eq-pg-proof-unrolled>
-  代回 $nabla_bold(theta) J(bold(theta)) = sum_s d_0 (s) nabla_bold(theta) v_(pi_bold(theta)) (s)$（$d_0$ 不依赖 $bold(theta)$），交换求和次序：
+  将 @eq-pg-proof-unrolled 代入目标梯度 $nabla_bold(theta) J(bold(theta)) = sum_s d_0 (s) nabla_bold(theta) v_(pi_bold(theta)) (s)$（因初始分布 $d_0$ 与 $bold(theta)$ 无关），并交换求和次序：
   $
-    nabla_bold(theta) J(bold(theta)) = sum_(s' in cal(S)) underbrace(sum_(t = 0)^oo gamma^t sum_(s in cal(S)) d_0 (s) Pr(S_t = s' divides S_0 = s, pi_bold(theta)), = thin mu^(pi_bold(theta)) (s') thin upright("（@eq-pg-state-visitation）")) phi(s') = sum_(s' in cal(S)) mu^(pi_bold(theta)) (s') phi(s') ,
+    nabla_bold(theta) J(bold(theta)) = sum_(s' in cal(S)) underbrace((sum_(t = 0)^oo gamma^t sum_(s in cal(S)) d_0 (s) Pr(S_t = s' divides S_0 = s, pi_bold(theta))), = thin mu^(pi_bold(theta)) (s') thin upright("（由式 ") #ref(<eq-pg-state-visitation>) upright("）")) phi(s') = sum_(s' in cal(S)) mu^(pi_bold(theta)) (s') phi(s') ,
   $
-  即 @eq-pg-theorem-sum；再对其用引理 7.1 并除以 $1 - gamma$ 得 @eq-pg-theorem-expectation。$#h(2em) square.filled.medium$
+  此即 @eq-pg-theorem-sum；再对内层积分应用#link(<lem-7.1>)[引理 7.1] 并代入 $mu^(pi_bold(theta)) (s) = frac(1, 1 - gamma) d^(pi_bold(theta)) (s)$，即证得 @eq-pg-theorem-expectation。$#h(2em) square.filled.medium$
 
-#strong[关于"梯度穿过状态分布"那一项的去向]：$J(bold(theta)) = sum_s d_0 (s) v_(pi_bold(theta)) (s)$ 中 $d_0$ 固定，问题全部来自 $v_(pi_bold(theta))$ 内部状态分布对 $bold(theta)$ 的依赖。证明显示这项#strong[并没有被丢弃]：它在 @eq-pg-proof-step2 借贝尔曼方程把 $nabla_bold(theta) q_(pi_bold(theta))$ 化为 $gamma sum_(s') p(s' divides s, a) nabla_bold(theta) v_(pi_bold(theta)) (s')$，再经 @eq-pg-proof-recursion 的自递推被展开成 $mu^(pi_bold(theta))$。换言之，贝尔曼方程使 $nabla_bold(theta)$ 与算子 $cal(T)^pi$ #strong[可交换]，把"对状态分布求导"的无穷级数一次性吸收进折扣访问测度。若不走这条递推、直接对有限 $T$ 的轨迹概率求导，也能得到同一结论（见 #link(<sec-reinforce>)[第 7.4 节]）。
+#strong[关于状态分布参数依赖项的化简机理]：在性能目标 $J(bold(theta)) = sum_s d_0 (s) v_(pi_bold(theta)) (s)$ 中，策略参数 $bold(theta)$ 改变不仅影响单步动作选择，还会改变未来各时刻访问各状态的概率分布。上述证明严格表明，这一状态分布对参数的变化率#strong[并未被忽略或近似丢弃]：在第二步（@eq-pg-proof-step2）中，借助贝尔曼桥接方程将未来状态分布对 $bold(theta)$ 的依赖转化为后继状态价值的导数 $gamma sum_(s') p(s' divides s, a) nabla_bold(theta) v_(pi_bold(theta)) (s')$，进而在第三步（@eq-pg-proof-unrolled）通过无穷级数展开，将所有时间步上的链式求导项精确加总并吸收进折扣状态访问测度 $mu^(pi_bold(theta)) (s)$ 之中。若从轨迹联合概率密度直接求导，亦可导出完全等价的结论（见#link(<sec-reinforce>)[第 7.4 节]）。
 
-#strong[关于常数因子 $1 \/ (1 - gamma)$]：@eq-pg-theorem-expectation 的期望形式带着 $1 \/ (1 - gamma)$。实际算法把它吸收进步长 $alpha$，写成 $bb(E)_(d^pi, pi)[q_pi nabla_bold(theta) log pi]$ 并按此采样；这与 #link(<sec-robbins-monro-theory>)[第 6.1 节] Robbins-Monro 更新中"目标值可差一个正常数倍、由步长补偿"的做法一致。
+#strong[关于归一化常数因子 $1 \/ (1 - gamma)$]：@eq-pg-theorem-expectation 右端带有比例常数 $1 \/ (1 - gamma)$。在实际梯度上升算法中，该正常数通常直接并入学习率步长 $alpha_k$ 中，这与#link(<sec-robbins-monro-theory>)[第 6.1.3 节] Robbins-Monro 随机近似框架中步长吸收正比例因子的处理完全一致。
 
 #divider()
 
-== REINFORCE：策略空间中的蒙特卡洛估计
+== REINFORCE：策略空间中的蒙特卡洛梯度估计
 <sec-reinforce>
 
-定理 7.1 把梯度写成期望，剩下的问题就是用样本去估计它。最直接的选择与#link(<sec-mc-estimation>)[第 6.3 节]一致：用完整回报 $G_t$ 代替 $q_(pi_bold(theta))$。
+#link(<thm-7.1>)[定理 7.1] 将策略梯度表示为关于折扣状态分布与策略分布的数学期望，接下来的核心任务便是从交互轨迹样本中估计该期望。最直接的无偏采样方案与#link(<sec-mc-estimation>)[第 6.3 节]的蒙特卡洛方法完全对应：沿当前策略采集完整轨迹，并以真实折扣回报 $G_t$ 作为动作价值 $q_(pi_bold(theta)) (S_t, A_t)$ 的无偏样本。
 
-#strong[命题 7.1（REINFORCE 估计量的无偏性）] <prop-7.1> 设轨迹 $tau = (S_0, A_0, R_1, dots.h)$ 由 $pi_bold(theta)$ 生成，则
+#strong[命题 7.1（REINFORCE 蒙特卡洛策略梯度估计量的无偏性，Williams, 1992）] <prop-7.1> 设轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h)$ 由策略 $pi_bold(theta)$ 与环境交互生成（对于在有限步 $T$ 终止的分幕式任务，约定可将终止状态 $S_T$ 视为零奖励自环吸收态，从而有限和 $sum_(t = 0)^(T - 1)$ 与无穷级数 $sum_(t = 0)^oo$ 严格等价），则有：
 $
   #eqbox([$ nabla_bold(theta) J(bold(theta)) = bb(E)_(tau tilde pi_bold(theta)) [sum_(t = 0)^(T - 1) #mhlb($gamma^t$) #mhlg($G_t$) #mhl($nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)$)] $])
 $ <eq-pg-reinforce>
-其中 $G_t = sum_(k = 0)^(T - t - 1) gamma^k R_(t + k + 1)$ 是 #link(<sec-mdp>)[第 1 章]定义的折扣回报。
+其中 $G_t = sum_(k = 0)^(T - t - 1) gamma^k R_(t + k + 1)$ 为#link(<def-1.1>)[定义 1.1] 给出的从时刻 $t$ 起算的折扣回报。
 
-#strong[证明]：把 @eq-pg-theorem-expectation 的期望写成沿轨迹的形式。注意 $G_t$ 只依赖 $t$ 时刻之后的奖励与状态，而在给定 $S_t = s, A_t = a$ 时，$bb(E)[G_t divides S_t = s, A_t = a] = q_(pi_bold(theta)) (s, a)$（动作价值定义 @eq-q-def）。于是对每一项用#link(<lem-1>)[引理 1] 的塔性质：
+#strong[证明]：对轨迹时刻 $t$ 的通项，应用#link(<lem-2>)[引理 2] 的全期望公式（塔性质，取条件变量为 $(S_t, A_t)$）与已知量提取性质（P9），并代入动作价值定义 $bb(E)_(pi_bold(theta)) [G_t divides S_t, A_t] = q_(pi_bold(theta)) (S_t, A_t)$（@eq-q-def）：
 $
-  bb(E)_(tau) [gamma^t G_t nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] = bb(E)_(S_t, A_t) [gamma^t bb(E)[G_t divides S_t, A_t] nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] = bb(E)_(S_t, A_t) [gamma^t q_(pi_bold(theta)) (S_t, A_t) nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] .
+  bb(E)_(tau tilde pi_bold(theta)) [gamma^t G_t nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] & = bb(E)_(S_t, A_t) [gamma^t #mhlb($bb(E)[G_t divides S_t, A_t]$) nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] quad #[（由#link(<lem-2>)[引理 2] 与性质 P9）] \
+  & = bb(E)_(S_t, A_t) [gamma^t #mhlg($q_(pi_bold(theta)) (S_t, A_t)$) nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)] \
+  & = sum_(s in cal(S)) gamma^t Pr(S_t = s divides pi_bold(theta), d_0) integral_(cal(A)) pi_bold(theta) (a divides s) q_(pi_bold(theta)) (s, a) nabla_bold(theta) log pi_bold(theta) (a divides s) dif a .
 $
-对 $t$ 求和，$sum_(t = 0)^oo gamma^t Pr(S_t = s)$ 恰好是 $mu^(pi_bold(theta)) (s)$，与 @eq-pg-proof-unrolled 一致，即得 @eq-pg-theorem-sum。$#h(2em) square.filled.medium$
+对所有时间步 $t$ 求和（在分幕任务中 $t gt.eq T$ 时奖励与终止态得分贡献为零，故 $sum_(t = 0)^(T - 1)$ 与 $sum_(t = 0)^oo$ 一致），由线性性（P13）交换期望与求和，并代入折扣状态访问测度定义 $mu^(pi_bold(theta)) (s) = sum_(t = 0)^oo gamma^t Pr(S_t = s divides pi_bold(theta), d_0)$（@eq-pg-state-visitation）及对数导数恒等式（#link(<lem-7.1>)[引理 7.1]），即得 @eq-pg-theorem-sum。$#h(2em) square.filled.medium$
 
-对应的参数更新律为（随机梯度上升，步长 $alpha_k$ 满足 @eq-rm-step-conditions 时可套用 Robbins-Monro 框架）：
+基于单条采样轨迹的 REINFORCE 随机梯度上升更新律为（当步长序列 $alpha_k$ 满足 @eq-rm-step-conditions 时，由 Robbins-Monro 随机近似理论保证收敛于 $J(bold(theta))$ 的平稳点）：
 $
-  #eqbox([$ bold(theta)_(k + 1) = bold(theta)_k + alpha_k sum_(t = 0)^(T - 1) gamma^t G_t nabla_bold(theta) log pi_bold(theta) (A_t divides S_t) $])
+  #eqbox([$ bold(theta)_(k + 1) = bold(theta)_k + alpha_k sum_(t = 0)^(T - 1) gamma^t G_t nabla_bold(theta) log pi_(bold(theta)_k) (A_t divides S_t) $])
 $ <eq-pg-reinforce-update>
 
-#strong[三点说明]：
+#strong[理论性质评述]：
 
-1. #strong[它就是策略空间的蒙特卡洛估计]：@eq-pg-reinforce 用完整回报 $G_t$ 代替 $q_(pi_bold(theta))$，与#link(<prop-6.2>)[命题 6.2] 的样本均值同一思路——无偏、不自举、必须等一幕结束。它估计的不是价值，而是梯度；但统计性质（无偏、方差大、需要整幕）与 MC 完全对应。
-2. #strong[$gamma^t$ 因子是无偏性所要求的权重]：它来自折扣访问测度 $mu^(pi_bold(theta))$ 中第 $t$ 步的折扣 $gamma^t$。实际实现常省略它，代价是引入偏差（此时优化的不再是 @eq-pg-objective 的精确梯度）；保留它则与定理严格一致。
-3. #strong[代价：方差]：$G_t$ 是整幕累积回报，随机性来自整段轨迹；得分函数 $nabla_bold(theta) log pi_bold(theta)$ 在每个时刻都要乘上一个高方差的标量。这正是下一节基线要解决的问题。
+1. #strong[与蒙特卡洛价值估计的同构性]：@eq-pg-reinforce 以完整轨迹回报 $G_t$ 替代未知的真实动作价值 $q_(pi_bold(theta)) (S_t, A_t)$，在统计机制上与#link(<prop-6.2>)[命题 6.2] 的蒙特卡洛方法完全对应——具有#strong[严格无偏、无需自举、不依赖环境模型]的优点，但同样只能在整幕轨迹终止后执行离线更新。
+2. #strong[折扣因子 $gamma^t$ 的理论必要性]：@eq-pg-reinforce 中的时间步权重 $gamma^t$ 直接源自折扣状态访问测度 $mu^(pi_bold(theta))$ 的定义，是保证梯度估计量对折扣目标 @eq-pg-objective 严格无偏的必要因子（部分工程实现常忽略 $gamma^t$，此时实际优化的是非折扣状态分布加权下的近似目标，存在理论偏差）。
+3. #strong[高方差瓶颈]：由于完整回报 $G_t$ 累加了时刻 $t$ 之后整段轨迹的环境转移与动作采样随机性，将该高方差标量直接乘在得分函数 $nabla_bold(theta) log pi_bold(theta) (A_t divides S_t)$ 上会导致梯度估计方差极大、收敛缓慢。为此，下一节引入状态基线技术以在不引入偏差的前提下显著降低梯度方差。
 
 #divider()
 
-== 基线与优势函数：减方差而不改梯度
+== 状态基线与优势函数：无偏方差缩减机制
 <sec-pg-baseline>
 
-REINFORCE 的病灶很清楚：得分函数 $nabla_bold(theta) log pi_bold(theta)$ 乘上的是整幕回报 $G_t$，而 $G_t$ 里含有大量与"在状态 $s$ 选动作 $a$ 有多好"无关的随机起伏。基线（Baseline）是这块补丁：从回报里减去一个#strong[不依赖当前动作]的量，方差下降而期望不变。
+REINFORCE 梯度估计量高方差的根源在于：完整回报 $G_t$ 不仅包含“在状态 $S_t$ 选择特定动作 $A_t$ 的相对优劣”，还混入了由状态 $S_t$ 本身的基础价值水平所决定的基准偏移。通过从动作价值（或回报）中减去一个#strong[仅依赖于状态 $S_t$、不依赖于当前动作 $A_t$ 的基线函数（Baseline）$b(S_t)$]，可在严格保持梯度期望不变的前提下大幅缩减估计方差。
 
-#strong[命题 7.2（状态基线不引入偏差）] <prop-7.2> 设 $b(s)$ 是任意只依赖状态 $s$、不依赖动作 $a$ 的函数，则对任意状态 $s$：
+#strong[命题 7.2（状态相关基线的无偏性）] <prop-7.2> 设 $b : cal(S) arrow.r bb(R)$ 为任意仅依赖于状态 $s$ 而与动作 $a$ 无关的确定性函数，则对任意状态 $s in cal(S)$，基线项与得分函数乘积的条件期望恒为零向量：
 $
-  bb(E)_(A tilde.op pi_bold(theta) (dot.op divides s)) [b(s) nabla_bold(theta) log pi_bold(theta) (A divides s)] = b(s) integral_(cal(A)) nabla_bold(theta) pi_bold(theta) (a divides s) dif a = bold(0) .
+  bb(E)_(A tilde.op pi_bold(theta) (dot.op divides s)) [b(s) nabla_bold(theta) log pi_bold(theta) (A divides s)] = b(s) integral_(cal(A)) pi_bold(theta) (a divides s) nabla_bold(theta) log pi_bold(theta) (a divides s) dif a = b(s) integral_(cal(A)) nabla_bold(theta) pi_bold(theta) (a divides s) dif a = bold(0) .
 $ <eq-pg-baseline-zero>
-因此 REINFORCE 的梯度可以等价写成
+因此，策略梯度（@eq-pg-theorem-expectation）可等价表征为带基线的形式：
 $
   #eqbox([$ nabla_bold(theta) J(bold(theta)) = frac(1, 1 - gamma) bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta)) [(q_(pi_bold(theta)) (S, A) - b(S)) nabla_bold(theta) log pi_bold(theta) (A divides S)] $])
 $ <eq-pg-baseline-gradient>
 
-#strong[证明]：$b(s)$ 与 $A$ 无关，可提出期望；剩下的积分由 @eq-pg-score-zero 为零。关键是 $integral_(cal(A)) pi_bold(theta) (a divides s) dif a = 1$ 是#strong[恒等式]，对 $bold(theta)$ 求导恒为零——不是"近似为零"。把 $q_(pi_bold(theta))$ 换成 $q_(pi_bold(theta)) - b$ 因而不改变 @eq-pg-theorem-expectation。$#h(2em) square.filled.medium$
+#strong[证明]：在给定状态 $S = s$ 的条件下，$b(s)$ 关于动作随机变量 $A$ 为条件已知常数（性质 P9），可直接提取至积分（期望）号外；剩余积分项由#link(<lem-7.1>)[引理 7.1] 的零均值性质（@eq-pg-score-zero，源于概率密度恒归一化 $integral_(cal(A)) pi_bold(theta) (a divides s) dif a equiv 1$）精确等于零向量。将 @eq-pg-baseline-zero 代入 @eq-pg-theorem-expectation 即得 @eq-pg-baseline-gradient。$#h(2em) square.filled.medium$
 
-最自然的选择是 $b(s) = v_(pi_bold(theta)) (s)$：它代表"在状态 $s$ 按当前策略行事的平均水平"，而 $q_(pi_bold(theta)) (s, a)$ 是"在状态 $s$ 偏要执行动作 $a$、之后再按当前策略行事"的水平。二者之差就是#strong[优势函数]（Advantage Function）：
+理论与实践中最自然的基线选择是当前策略下的#strong[状态价值函数] $b(s) = v_(pi_bold(theta)) (s)$：$v_(pi_bold(theta)) (s)$ 表征智能体在状态 $s$ 下遵循策略 $pi_bold(theta)$ 所能获得的平均期望回报，而 $q_(pi_bold(theta)) (s, a)$ 表征在状态 $s$ 显式选定动作 $a$ 后再遵循策略 $pi_bold(theta)$ 所获得的期望回报。二者之差定义为#strong[优势函数]（Advantage Function）：
 $
   #eqbox([$ A^(pi_bold(theta)) (s, a) eq.dot q_(pi_bold(theta)) (s, a) - v_(pi_bold(theta)) (s) $])
 $ <eq-pg-advantage-def>
-它回答"这个动作比平均水平好多少"，且在当前策略下均值为零：$bb(E)_(A tilde.op pi_bold(theta))[A^(pi_bold(theta)) (s, A)] = v_(pi_bold(theta)) (s) - v_(pi_bold(theta)) (s) = 0$。这正是 @eq-pg-baseline-gradient 的形式。
+优势函数 $A^(pi_bold(theta)) (s, a)$ 精确刻画了在状态 $s$ 下选择动作 $a$ 相对于当前策略平均表现的超额收益，且由#link(<thm-3.1>)[定理 3.1] 易知其在策略分布下的条件期望恒为零：$bb(E)_(A tilde.op pi_bold(theta))[A^(pi_bold(theta)) (s, A)] = v_(pi_bold(theta)) (s) - v_(pi_bold(theta)) (s) = 0$。
 
-#strong[最优基线（可选读）]：若按梯度估计量的方差（协方差矩阵的迹）最小化来选 $b(s)$，对每个状态求解关于 $b$ 的二次优化，可得
+#strong[最小方差最优基线]：若以最小化单步梯度估计量的方差（即协方差矩阵的迹 $bb(E)[norm((q_(pi_bold(theta)) - b(s)) nabla_bold(theta) log pi_bold(theta))^2]$）为准则对 $b(s)$ 求一阶极值条件，可得理论最小方差基线为：
 $
   b^star (s) = frac(bb(E)_(A tilde.op pi_bold(theta)) [norm(nabla_bold(theta) log pi_bold(theta) (A divides s))^2 q_(pi_bold(theta)) (s, A)], bb(E)_(A tilde.op pi_bold(theta)) [norm(nabla_bold(theta) log pi_bold(theta) (A divides s))^2]) .
 $ <eq-pg-optimal-baseline>
-它是按得分函数范数加权的动作价值平均；$v_(pi_bold(theta))$ 是去掉权重后的常用近似。实际系统几乎不精确计算 @eq-pg-optimal-baseline，而是用第 6 章的方法估计 $v_(pi_bold(theta))$。
+即以得分函数模长平方为权重的动作价值加权平均；状态价值 $v_(pi_bold(theta)) (s) = bb(E)_(A tilde.op pi_bold(theta))[q_(pi_bold(theta)) (s, A)]$ 正是 @eq-pg-optimal-baseline 略去范数权重后的无权近似，在实际算法中直接采用#link(<sec-value-estimation>)[第 6 章]的价值估计方法对 $v_(pi_bold(theta)) (s)$ 进行逼近即可获得优良的降方差效果。
 
-#strong[优势与 TD 误差的恒等关系]：基线补丁与#link(<sec-td-estimation>)[第 6.5 节]在此处合流。对单步转移，由贝尔曼期望方程 @eq-bellman-exp-vv 与动作价值定义：
+#strong[优势函数与单步 TD 误差的期望等价性]：由#link(<thm-3.2>)[定理 3.2] 的 $q_pi arrow.r v_pi$ 贝尔曼期望方程（@eq-bellman-exp-qv），单步时序差分误差 $delta_t eq.dot R_(t + 1) + gamma v_(pi_bold(theta)) (S_(t + 1)) - v_(pi_bold(theta)) (S_t)$ 在给定 $(S_t = s, A_t = a)$ 下的条件期望恰等于优势函数：
 $
-  bb(E)[underbrace(R_(t + 1) + gamma v_(pi_bold(theta)) (S_(t + 1)) - v_(pi_bold(theta)) (S_t), upright("TD 误差 ") delta_t) divides S_t = s, A_t = a] = q_(pi_bold(theta)) (s, a) - v_(pi_bold(theta)) (s) = A^(pi_bold(theta)) (s, a) .
+  bb(E)_(R_(t + 1), S_(t + 1)) [underbrace(R_(t + 1) + gamma v_(pi_bold(theta)) (S_(t + 1)) - v_(pi_bold(theta)) (S_t), upright("真实状态价值下的 TD 误差 ") delta_t) divides S_t = s, A_t = a] = q_(pi_bold(theta)) (s, a) - v_(pi_bold(theta)) (s) = A^(pi_bold(theta)) (s, a) .
 $ <eq-pg-advantage-td>
-所以估计优势不必另维护一张 $Q$ 表：用一个 $V$ 的 TD 误差就够了。下一步就是把 $V$ 交给一个独立的估计器。
+@eq-pg-advantage-td 揭示了一条关键性质：要构造优势函数 $A^(pi_bold(theta)) (s, a)$ 的无偏单步估计，无需同时维护 $Q$ 与 $V$ 两套估计器，仅需估计状态价值函数 $V(s)$ 并计算其单步 TD 误差 $delta_t$ 即可。这直接导出了下一节的 Actor-Critic 架构。
 
 #divider()
 
-== Actor-Critic：把第 6 章的价值估计器接进策略梯度
+== Actor-Critic 架构与兼容函数近似定理
 <sec-actor-critic>
 
-#strong[Actor-Critic] 是基线补丁的自举版本：Actor 负责更新策略参数 $bold(theta)$，Critic 负责用第 6 章的方法估计 $v_(pi_bold(theta))$ 或优势。两者共用一条轨迹，但更新的是不同参数。
+#strong[演员-评论家（Actor-Critic）]架构将策略梯度（#link(<sec-pg-theorem>)[第 7.3 节]）与基于自举的价值估计（#link(<sec-td-estimation>)[第 6.5 节]）有机结合：#strong[Actor（演员）]维护参数化策略 $pi_bold(theta) (a divides s)$ 并沿策略梯度方向更新参数 $bold(theta)$；#strong[Critic（评论家）]维护参数化价值函数 $hat(v)(s; bold(w))$（或 $hat(q)(s, a; bold(w))$），利用第 6 章的时序差分方法更新参数 $bold(w)$，为 Actor 提供低方差的优势函数（或动作价值）估计。
 
-#strong[Actor（策略）]：用优势估计 $hat(A)_t$ 替换 @eq-pg-reinforce-update 中的 $G_t$，得到统一更新外壳
+#strong[Actor（策略参数更新）]：以优势估计量 $hat(A)_t$ 替代 @eq-pg-reinforce-update 中的整幕回报 $G_t$，得到通用的 Actor 更新公式：
 $
   #eqbox([$ bold(theta)_(k + 1) = bold(theta)_k + alpha_k #mhlg($hat(A)_t$) nabla_bold(theta) log pi_(bold(theta)_k) (A_t divides S_t) $])
 $ <eq-pg-ac-update>
-$hat(A)_t$ 的构造方式决定了这是哪一种 Actor-Critic，见 @tab-pg-advantage-estimators。
+其中优势估计量 $hat(A)_t$ 的具体构造方式决定了 Actor-Critic 算法的具体类型（汇总见 @tab-pg-advantage-estimators）。
 
-#strong[Critic（价值）]：以一步 TD 为例，维护参数 $bold(w)$ 的价值近似 $hat(v)(s; bold(w))$，TD 误差与 Critic 更新为
+#strong[Critic（价值参数更新）]：以一步自举的#strong[优势 Actor-Critic（Advantage Actor-Critic, A2C）]为例，Critic 采用参数为 $bold(w)$ 的状态价值近似函数 $hat(v)(s; bold(w))$，其单步 TD 误差与半梯度更新律为：
 $
   hat(delta)_t = R_(t + 1) + gamma hat(v)(S_(t + 1); bold(w)_k) - hat(v)(S_t; bold(w)_k), quad bold(w)_(k + 1) = bold(w)_k + beta_k hat(delta)_t nabla_bold(w) hat(v)(S_t; bold(w)_k) .
 $ <eq-pg-critic-update>
-取 $hat(A)_t = hat(delta)_t$ 即得#strong[一步 Actor-Critic]；Critic 换成 $n$ 步 TD 或 TD($lambda$) 就得到相应的多步版本。这里的 Critic 更新与#link(<sec-td-estimation>)[第 6.5 节]的 TD(0) 完全同构，只是 $V$ 换成了参数化 $hat(v)$。
+在 Actor 更新（@eq-pg-ac-update）中取 $hat(A)_t = hat(delta)_t$ 即构成一步 Actor-Critic 算法；若将 Critic 的自举目标替换为 $n$-步 TD 回报或 TD($lambda$)，则得到对应的多步 Actor-Critic 算法。可见，Critic 的更新过程与#link(<sec-td-estimation>)[第 6.5 节]的时序差分价值估计完全一致。
 
-#strong[代价：从"无偏"退到"渐近无偏或有偏"]：REINFORCE 的 $G_t$ 在条件期望下等于真实 $q_(pi_bold(theta))$，而 $hat(delta)_t$ 含有尚未收敛的 $hat(v)$，因此 @eq-pg-ac-update 一般#strong[不是]真梯度的无偏估计。它换来的是在线更新、低方差与更短信用分配路径；偏差随 Critic 收敛而减小。
+#strong[偏差-方差权衡]：在 REINFORCE 中，完整回报 $G_t$ 的条件期望严格等于真实 $q_(pi_bold(theta)) (S_t, A_t)$，梯度估计无偏但方差极大；而在 Actor-Critic 中，由于自举优势估计 $hat(delta)_t = R_(t + 1) + gamma hat(v)(S_(t + 1); bold(w)) - hat(v)(S_t; bold(w))$ 使用了带有函数近似误差与自举误差的估计值 $hat(v)(dot.op; bold(w))$，当 $hat(v) eq.not v_(pi_bold(theta))$ 时，$bb(E)[hat(delta)_t divides S_t, A_t] eq.not A^(pi_bold(theta)) (S_t, A_t)$，从而在策略梯度估计中引入了#strong[自举与函数近似偏差]，以此换取在线单步更新能力与显著更低的估计方差。
 
-#strong[兼容函数近似（Compatible Function Approximation）]：何时 Critic 的近似不会破坏梯度方向？若取特征为得分函数
+#strong[定理 7.2（兼容函数近似定理，Compatible Function Approximation Theorem, Sutton et al., 2000; Kakade, 2001）] <thm-7.2> 在何种条件下，用参数化近似器替代真实价值函数不会给策略梯度引入任何渐近偏差？设优势函数（或搭配状态基线 $v(s)$ 后的动作价值）的参数化近似器 $hat(A)_bold(w) (s, a)$ 满足以下两条条件：
+1. #strong[梯度兼容性条件（Compatibility Condition）]：近似器关于自身参数 $bold(w)$ 的梯度等于策略的对数梯度（得分函数）：
+   $
+     nabla_bold(w) hat(A)_bold(w) (s, a) = nabla_bold(theta) log pi_bold(theta) (a divides s) ,
+   $ <eq-pg-compatibility-cond>
+   即线性兼容参数化形式 $hat(A)_bold(w) (s, a) = bold(w)^top nabla_bold(theta) log pi_bold(theta) (a divides s)$（注：由 @eq-pg-score-zero 知得分函数关于动作的条件期望为零，故该线性组合天然满足优势函数的零均值性质 $bb(E)_(A tilde.op pi_bold(theta))[hat(A)_bold(w) (s, A)] = 0$；若要逼近动作价值 $q_(pi_bold(theta)) (s, a)$，则需写成 $hat(q)(s, a; bold(w), bold(v)) = hat(v)(s; bold(v)) + bold(w)^top nabla_bold(theta) log pi_bold(theta) (a divides s)$）。
+2. #strong[最小均方误差正交性条件]：参数 $bold(w)$ 收敛于加权均方逼近误差 $cal(E)(bold(w)) eq.dot frac(1, 2) bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta)) [(A^(pi_bold(theta)) (S, A) - hat(A)_bold(w) (S, A))^2]$ 的极小点，即满足一阶平稳条件：
+   $
+     nabla_bold(w) cal(E)(bold(w)) = bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta)) [(hat(A)_bold(w) (S, A) - A^(pi_bold(theta)) (S, A)) #mhl($nabla_bold(w) hat(A)_bold(w) (S, A)$)] = bold(0) .
+   $ <eq-pg-compatible-orthogonality>
+则将 @eq-pg-compatibility-cond 代入 @eq-pg-compatible-orthogonality 并移项，立得用近似器 $hat(A)_bold(w)$ 替换真实优势函数后计算的策略梯度#strong[精确等于]真实策略梯度（零逼近偏差）：
 $
-  hat(q)(s, a; bold(w)) = bold(w)^top nabla_bold(theta) log pi_bold(theta) (a divides s),
-$ <eq-pg-compatible-features>
-并令 $bold(w)$ 最小化加权均方误差 $bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta))[(hat(q)(S, A; bold(w)) - q_(pi_bold(theta)) (S, A))^2]$（在通常的零均值归一化下），则所得 $bold(w)$ 与真梯度方向一致，只差一个由 $d^(pi_bold(theta))$ 归一化带来的正常数。这说明"价值近似"与"策略梯度"并非任意拼接：特征必须与得分函数兼容，才能保住方向。
+  #eqbox([$ frac(1, 1 - gamma) bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta)) [#mhlg($hat(A)_bold(w) (S, A)$) #mhl($nabla_bold(theta) log pi_bold(theta) (A divides S)$)] = frac(1, 1 - gamma) bb(E)_(S tilde.op d^(pi_bold(theta)), A tilde.op pi_bold(theta)) [A^(pi_bold(theta)) (S, A) nabla_bold(theta) log pi_bold(theta) (A divides S)] = nabla_bold(theta) J(bold(theta)) $])
+$ <eq-pg-compatible-exact-grad>
+此外，将 $hat(A)_bold(w) (S, A) = [nabla_bold(theta) log pi_bold(theta) (A divides S)]^top bold(w)$ 代入上式左端可得 $(1 - gamma)^(-1) bold(F)(bold(theta)) bold(w) = nabla_bold(theta) J(bold(theta))$，其中 $bold(F)(bold(theta)) eq.dot bb(E)_(d^(pi_bold(theta)), pi_bold(theta)) [nabla_bold(theta) log pi_bold(theta) (nabla_bold(theta) log pi_bold(theta))^top]$ 为策略分布的 #strong[Fisher 信息矩阵]，故最优兼容参数向量 $bold(w) = (1 - gamma) bold(F)(bold(theta))^(-1) nabla_bold(theta) J(bold(theta))$ 恰对应于 Amari 意义下的#strong[自然策略梯度（Natural Policy Gradient）]方向。
 
 #figure(
-  caption: [Actor-Critic 中优势估计器与第 6 章估计方法的对应关系。估计器越靠下，自举越少、偏差越小而方差越大；GAE 用一个 $lambda$ 在这条谱上连续插值],
+  caption: [Actor-Critic 架构中四类优势函数估计器与第 6 章价值估计方法的对应关系。随着自举步数增加，自举偏差递减而采样方差递增；GAE 通过参数 $lambda in [0, 1]$ 在该谱系上实现连续插值],
   text(size: 8.6pt, table(
     columns: (1.05fr, 1.55fr, 1.05fr, 1.2fr, 1.1fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon, left + horizon),
-    table.header([优势估计器], [构造], [借用的估计方法], [偏差 / 方差], [代表算法]),
+    table.header([优势估计器], [数学构造], [对应的第 6 章方法], [偏差-方差特征], [代表性算法]),
     table.hline(),
-    [MC 优势], [$hat(A)_t = G_t - hat(v)(S_t)$], [第 6.3 节 MC + 基线], [偏差小、方差大], [REINFORCE + 基线],
+    [蒙特卡洛优势], [$hat(A)_t = G_t - hat(v)(S_t)$], [第 6.3 节 MC + 状态基线], [无自举偏差、方差大], [REINFORCE with Baseline],
     table.hline(stroke: 0.6pt + accent),
-    [一步 TD 优势], [$hat(A)_t = hat(delta)_t$], [第 6.5 节 TD(0)], [有自举偏差、方差小], [A2C / A3C],
+    [一步 TD 优势], [$hat(A)_t = hat(delta)_t = R_(t+1) + gamma hat(v)(S_(t+1)) - hat(v)(S_t)$], [第 6.5 节 TD(0)], [含一步自举偏差、方差最小], [一步 Actor-Critic / A2C],
     table.hline(stroke: 0.6pt + accent),
-    [$n$ 步优势], [$hat(A)_t^((n)) = G_(t:t+n) - hat(v)(S_t)$], [第 6.5 节 $n$ 步 TD], [偏差-方差居中], [多步 Actor-Critic],
+    [$n$-步 TD 优势], [$hat(A)_t^((n)) = G_(t:t+n) - hat(v)(S_t)$], [第 6.5 节 $n$-步 TD], [偏差与方差折中], [多步 A2C / A3C],
     table.hline(stroke: 0.6pt + accent),
-    [GAE], [$hat(A)_t^upright("GAE")$，见 @eq-pg-gae], [第 6.5 节 TD($lambda$) 的优势版], [$lambda$ 连续调节], [PPO / TRPO],
+    [广义优势估计（GAE）], [$hat(A)_t^upright("GAE")(gamma, lambda)$，见 @eq-pg-gae], [第 6.5 节 TD($lambda$) 的优势对应], [由 $lambda in [0, 1]$ 连续权衡], [TRPO / PPO],
   )),
 ) <tab-pg-advantage-estimators>
 
 #divider()
 
-== 广义优势估计：把 $n$ 步优势按几何权重平均
+== 广义优势估计（GAE）：多步优势估计的指数加权平均
 <sec-gae>
 
-一步优势方差小但有自举偏差，MC 优势无偏但方差大。@tab-pg-advantage-estimators 的前三行是两个极端与一个折中，而#strong[广义优势估计]（Generalized Advantage Estimation, GAE）把 $n$ 步优势#strong[全部]按几何权重加权，用一个参数 $lambda$ 连续调节。
+在 Actor-Critic 框架中，一步 TD 优势估计方差低但受 Critic 逼近误差导致的自举偏差影响较大，而蒙特卡洛优势估计虽无自举偏差但方差随轨迹长度急剧增长。与#link(<sec-td-estimation>)[第 6.5 节]利用 TD($lambda$) 统一一步 TD 与蒙特卡洛的价值估计完全平行，Schulman et al. (2016) 提出的#strong[广义优势估计]（Generalized Advantage Estimation, GAE）通过对所有步长 $n$ 的 $n$-步优势估计量做几何加权平均，引入连续插值参数 $lambda in [0, 1]$ 实现偏差与方差的平滑调节。
 
-先把 $n$ 步优势写成 TD 误差之和。记 $delta_t = R_(t + 1) + gamma v_(pi_bold(theta)) (S_(t + 1)) - v_(pi_bold(theta)) (S_t)$，对 $n$ 步回报做望远镜式相消：
+首先将 $n$-步优势估计量表示为单步 TD 误差的折扣累加和。记价值近似函数 $V$（即 $hat(v)(dot.op; bold(w))$）下的第 $t$ 步 TD 误差为 $delta_t^V eq.dot R_(t + 1) + gamma V(S_(t + 1)) - V(S_t)$，对 $n$-步优势估计量 $hat(A)_t^((n)) eq.dot G_(t : t + n) - V(S_t)$ 展开裂项相消（Telescoping Sum）：
 $
-  #eqbox([$ hat(A)_t^((n)) = sum_(l = 0)^(n - 1) gamma^l delta_(t + l) = G_(t:t+n) - v_(pi_bold(theta)) (S_t) $])
+  #eqbox([$ hat(A)_t^((n)) eq.dot sum_(k = 0)^(n - 1) gamma^k R_(t + k + 1) + gamma^n V(S_(t + n)) - V(S_t) = sum_(l = 0)^(n - 1) gamma^l delta_(t + l)^V $])
 $ <eq-pg-nstep-advantage>
-推导只是把 $G_(t:t+n)$ 按每步展开后逐项配对：$gamma^l v_(pi_bold(theta)) (S_(t + l))$ 被前一项的 $gamma^l v_(pi_bold(theta)) (S_(t + l))$ 抵消，只剩首项 $-v_(pi_bold(theta)) (S_t)$ 与末项 $gamma^n v_(pi_bold(theta)) (S_(t + n))$。
+（展开右端可见，中间项 $+ gamma^l V(S_(t + l))$ 与后一时刻的 $- gamma^l V(S_(t + l))$ 逐项正负抵消，仅余首项 $-V(S_t)$ 与末项 $gamma^n V(S_(t + n))$。）
 
-#strong[定义 7.1（GAE）] <def-gae> 取 $lambda in [0, 1)$，定义
+#strong[定义 7.1（广义优势估计，GAE）] <def-gae> 给定折扣因子 $gamma in [0, 1]$ 与权衡参数 $lambda in [0, 1]$，广义优势估计量 $hat(A)_t^upright("GAE") (gamma, lambda)$ 定义为各步 TD 误差以 $(gamma lambda)^l$ 为权重的无穷级数（在分幕任务中求和至终止步 $T - t - 1$）：
 $
-  #eqbox([$ hat(A)_t^upright("GAE") (gamma, lambda) eq.dot sum_(l = 0)^oo (gamma lambda)^l delta_(t + l) $])
+  #eqbox([$ hat(A)_t^upright("GAE") (gamma, lambda) eq.dot sum_(l = 0)^oo (gamma lambda)^l delta_(t + l)^V $])
 $ <eq-pg-gae>
 
-#strong[命题 7.3（GAE 是 $n$ 步优势的几何平均）] <prop-7.3> 对任意 $lambda in [0, 1)$，
+#strong[命题 7.3（GAE 与 $n$-步优势指数加权平均的等价性）] <prop-7.3> 对任意 $lambda in [0, 1)$，@eq-pg-gae 定义的 GAE 等于所有 $n$-步优势估计量 $hat(A)_t^((n))$ 在几何分布权重 $(1 - lambda) lambda^(n - 1)$ 下的加权平均：
 $
   hat(A)_t^upright("GAE") (gamma, lambda) = (1 - lambda) sum_(n = 1)^oo lambda^(n - 1) hat(A)_t^((n)) .
 $ <eq-pg-gae-average>
-#strong[证明]：把 @eq-pg-nstep-advantage 代入右端，交换求和次序。右端中 $delta_(t + l)$ 的系数为
+#strong[证明]：将 @eq-pg-nstep-advantage 代入上式右端，并利用级数绝对收敛性（P13）交换关于 $n$ 与 $l$ 的双重求和次序（满足 $0 lt.eq l < n < oo$，故外层 $l$ 从 $0$ 到 $oo$，内层 $n$ 从 $l + 1$ 到 $oo$）：
 $
-  (1 - lambda) sum_(n = l + 1)^oo lambda^(n - 1) gamma^l = (1 - lambda) frac(lambda^l, 1 - lambda) gamma^l = (gamma lambda)^l,
+  (1 - lambda) sum_(n = 1)^oo lambda^(n - 1) sum_(l = 0)^(n - 1) gamma^l delta_(t + l)^V = sum_(l = 0)^oo gamma^l delta_(t + l)^V underbrace((1 - lambda) sum_(n = l + 1)^oo lambda^(n - 1), = thin (1 - lambda) frac(lambda^l, 1 - lambda) thin = thin lambda^l) = sum_(l = 0)^oo (gamma lambda)^l delta_(t + l)^V ,
 $
-与 @eq-pg-gae 逐项相同。$#h(2em) square.filled.medium$
+与 @eq-pg-gae 严格一致。$#h(2em) square.filled.medium$
 
-两端点验证了"连续旋钮"的说法：
+考察插值参数 $lambda$ 在两个端点处的退化情形：
+- #strong[当 $lambda = 0$ 时]：@eq-pg-gae 仅保留 $l = 0$ 的首项，即 $hat(A)_t^upright("GAE") (gamma, 0) = delta_t^V = R_(t + 1) + gamma V(S_(t + 1)) - V(S_t)$，完全退化为一步 TD 优势估计（方差最小，受 $V$ 的逼近偏差影响最大）。
+- #strong[当 $lambda = 1$ 时]：@eq-pg-gae 化为 $hat(A)_t^upright("GAE") (gamma, 1) = sum_(l = 0)^oo gamma^l delta_(t + l)^V = G_t - V(S_t)$（即 @eq-pg-nstep-advantage 在 $n arrow.r oo$ 时的极限），完全退化为带基线的蒙特卡洛优势估计（无论 $V$ 是否有偏，估计量在期望意义下均不引入自举偏差，但方差最大）。
 
-- $lambda = 0$：@eq-pg-gae 只剩 $l = 0$ 项，$hat(A)_t^upright("GAE") = delta_t$，退化为一步 TD 优势——自举偏差最大、方差最小。
-- $lambda = 1$：$hat(A)_t^upright("GAE") = sum_(l = 0)^oo gamma^l delta_(t + l) = G_t - v_(pi_bold(theta)) (S_t)$，退化为 MC 优势——无偏、方差最大。这一步正是 @eq-pg-nstep-advantage 在 $n -> oo$ 时的极限。
-
-因此 GAE 与 @tab-pg-advantage-estimators 中"$n$ 步优势"是同一个旋钮的不同刻度，而不是另一种方法；它在#link(<sec-td-estimation>)[第 6.5 节]的 TD($lambda$) 中的位置完全对应：那里是$lambda$-回报对价值估计做几何加权，这里是同一权重对优势估计做几何加权。$lambda$ 只影响#strong[优势估计的偏差-方差]，不改变 @eq-pg-theorem-expectation 本身——策略梯度的目标与真梯度形式始终不变。
+综上所述，@tab-pg-advantage-estimators 中的各类优势估计器均可视为同一参数谱系下的特例，GAE 在优势函数空间中的角色与#link(<sec-td-estimation>)[第 6.5 节] TD($lambda$) 在状态价值空间中的角色严格对偶。需要强调的是，参数 $lambda$ 仅调节#strong[优势估计量 $hat(A)_t$ 的偏差-方差权衡]，并不改变底层策略梯度定理（@eq-pg-theorem-expectation）的目标形式。
 
 #divider()
 
-== 策略梯度与贝尔曼方程：边界在哪里
+== 策略梯度与贝尔曼方程的理论边界辨析
 <sec-pg-vs-bellman>
 
-前面六章的中心任务是#strong[解方程]：把贝尔曼期望方程或贝尔曼最优方程当作自指的不动点方程，用迭代把 $v$、$q$ 解出来。本章的路线不同，必须把边界写清楚，否则会得出自相矛盾的结论。
+#link(<sec-mdp>)[第 1]--#link(<sec-value-estimation>)[6 章]的核心主线是#strong[求解贝尔曼方程]：将贝尔曼期望方程或贝尔曼最优方程视为价值空间上的算子不动点方程 $x = cal(T) x$，通过精确迭代或随机近似求解 $v_pi, q_pi, v_star, q_star$。本章的策略梯度方法则遵循另一条独立主线，为避免概念混淆，需严格厘清二者之间的理论边界：
 
-#strong[边界（不变）]：策略梯度的求解对象是策略参数 $bold(theta)$，贝尔曼方程#strong[不再是求解对象]。REINFORCE 一路完全不出现自举，$v$、$q$ 也不需要被解出来——它只用到期望的可微性与对数导数技巧。这与第 6 章"解方程"是两条独立的路线。
+#strong[核心分野]：策略梯度方法的直接优化变量是策略参数 $bold(theta)$，其求解目标是性能指标 $J(bold(theta))$ 的平稳点，#strong[贝尔曼方程不再作为最终的求解对象]。在纯蒙特卡洛策略梯度（REINFORCE）中，整个推导与算法执行仅依赖对数导数恒等式与完整轨迹采样，完全不涉及单步贝尔曼自举。
 
-#strong[但贝尔曼方程仍以三种方式进入]：
+#strong[贝尔曼方程进入策略梯度体系的三种途径]：
 
-1. #strong[优势的定义]：$A^(pi) (s, a) = q_(pi) (s, a) - v_(pi) (s)$（@eq-pg-advantage-def）本身就是贝尔曼期望方程中 $v$ 与 $q$ 桥接关系 @eq-bellman-exp-vq 的差。没有这层关系，"优势"无从定义。
-2. #strong[Critic 的价值估计]：Actor-Critic 与 GAE 用第 6 章的方法估计 $v_(pi_bold(theta))$——一步 TD 用贝尔曼期望方程 @eq-bellman-exp-vv，$n$ 步与 TD($lambda$) 是它的展开。此时贝尔曼方程#strong[被用来估计]一个量，而不是被求解为最终答案。
-3. #strong[显式例外：软贝尔曼方程]：SAC（见#link(<sec-pg-variants>)[第 7.9 节]）在回报里加入策略熵，得到软贝尔曼方程。它确实又回到"解方程"的路子上，只不过方程右端多了一个熵项。
+1. #strong[理论推导与优势函数定义中的桥接关系]：在策略梯度定理（#link(<thm-7.1>)[定理 7.1]）的递归证明中，利用了 $v_pi arrow.r q_pi$ 与 $q_pi arrow.r v_pi$ 的一步贝尔曼期望方程将对状态分布的求导转化为折扣状态访问测度；同时，优势函数 $A^pi (s, a) = q_pi (s, a) - v_pi (s)$（@eq-pg-advantage-def）及其与单步 TD 误差的期望等价性（@eq-pg-advantage-td）直接建立在贝尔曼期望桥接关系之上。
+2. #strong[Critic 模块中的辅助价值估计工具]：在 Actor-Critic 与 GAE（#link(<sec-actor-critic>)[第 7.6]--#link(<sec-gae>)[7.7 节]）中，Critic 模块复用#link(<sec-td-estimation>)[第 6.5 节]的时序差分方法（基于状态价值贝尔曼期望方程 @eq-bellman-exp-vv）逼近 $v_(pi_bold(theta))$。在此架构下，贝尔曼期望方程#strong[从“最终求解目标”降格为“构建低方差梯度估计量的辅助估计工具”]。
+3. #strong[最大熵强化学习中的显式结合（软贝尔曼方程）]：在最大熵 Actor-Critic 算法（如 SAC，见#link(<sec-pg-variants>)[第 7.9.3 节]）中，目标函数显式引入了策略熵正则项，此时 Critic 需直接求解带有熵奖励修正的#strong[软贝尔曼期望方程]，而 Actor 则最小化策略分布与软动作价值玻尔兹曼分布之间的 KL 散度，构成价值不动点迭代与参数化策略优化的深度融合。
 
-所以准确的表述是：策略梯度把贝尔曼方程从#strong[求解目标]降为#strong[估计工具]，而 SAC 是明确的反例，不能笼统说"策略梯度不解贝尔曼方程"。
+各代表性策略梯度算法族与贝尔曼方程的依赖关系汇总于 @tab-pg-bellman-boundary。
 
 #figure(
-  caption: [策略梯度各族与贝尔曼方程的关系。前三行的贝尔曼方程只作为估计工具出现（优势定义与 Critic）；RLVR 族连 Critic 一并去掉，贝尔曼方程不再以任何形式进入梯度估计；最后一行是显式解方程的例外],
+  caption: [策略梯度算法谱系与贝尔曼方程的理论关系对比。在标准策略梯度与 Actor-Critic 中，贝尔曼方程仅作为优势函数定义或 Critic 价值估计的辅助工具；在大语言模型 RLVR 的无 Critic 算法族中，贝尔曼自举被组内相对回报基线完全替代；而 SAC 则是显式求解软贝尔曼不动点方程的代表],
   text(size: 8.6pt, table(
     columns: (0.85fr, 1.7fr, 1.1fr, 1.05fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon),
-    table.header([算法], [优势 / 价值从哪来], [用到的贝尔曼关系], [是否解贝尔曼方程]),
+    table.header([算法类别], [优势 / 价值信号来源], [所依赖的贝尔曼关系], [是否求解贝尔曼方程]),
     table.hline(),
-    [REINFORCE], [完整回报 $G_t$ 减基线], [仅 $A = q - v$ 的定义], [否],
+    [REINFORCE], [完整轨迹回报 $G_t$（减去状态基线）], [仅证明与 $A = q - v$ 定义], [否（纯蒙特卡洛）],
     table.hline(stroke: 0.6pt + accent),
-    [A2C / A3C], [Critic 的一步或 $n$ 步 TD 误差], [@eq-bellman-exp-vv 用于估计 $v$], [否（估计，不解）],
+    [A2C / A3C], [Critic 的一步或 $n$-步 TD 误差], [@eq-bellman-exp-vv 用于 Critic 估计 $v_pi$], [仅 Critic 辅助估计],
     table.hline(stroke: 0.6pt + accent),
-    [TRPO / PPO], [GAE（@eq-pg-gae）], [同上，经 TD($lambda$)], [否（估计，不解）],
+    [TRPO / PPO], [基于 Critic 的广义优势估计 GAE（@eq-pg-gae）], [同上，经由 TD($lambda$) 递推], [仅 Critic 辅助估计],
     table.hline(stroke: 0.6pt + accent),
-    [GRPO 族（#link(<sec-rlvr-lineage>)[第 7.10 节]）], [同一 prompt 内组内标准化的回报，广播为该回复各 token 的常数优势], [无（$A = q - v$ 的定义被组内基线替换，$v$ 不再被估计）], [否，且不估计 $v$],
+    [GRPO 算法族（#link(<sec-rlvr-lineage>)[第 7.10 节]）], [同一提示下组内标准化回报，广播为序列内各 token 的优势], [无（以组内经验均值替代 $v_pi$，无需 Critic 网络）], [否（完全无需自举）],
     table.hline(stroke: 0.6pt + accent),
-    [SAC], [软 $Q$ 与软 $V$，来自软贝尔曼方程], [软贝尔曼方程（含熵项）], [是，显式例外],
+    [SAC], [由软贝尔曼方程估计的软动作价值 $q_upright("soft")^pi$ 与软状态价值 $v_upright("soft")^pi$], [软贝尔曼期望方程（@eq-pg-soft-bellman）], [是（Critic 求解软不动点）],
   )),
 ) <tab-pg-bellman-boundary>
 
 #divider()
 
-== 工程变体：各自修复一个具体病灶
+== 策略梯度的重要扩展变体：信任域约束、确定性策略与最大熵正则
 <sec-pg-variants>
 
-前面各节给的是"原理正确"的梯度估计：@eq-pg-theorem-expectation 无偏，@eq-pg-baseline-gradient 方差更低，@eq-pg-ac-update 能在线更新，@eq-pg-gae 给了偏差-方差旋钮。但直接把这些估计塞进梯度上升会遇到三类具体麻烦。下面三组变体各自只修其中一类，公式之外的改动一律不涉及。
-变体一给出的裁剪外壳在 LLM 的 RLVR 训练中被原样继承，并在其上继续演化出四代算法（#link(<sec-rlvr-lineage>)[第 7.10 节]）——那是同一外壳上的三个坐标，不是第四组变体。
+#link(<sec-pg-theorem>)[第 7.3]--#link(<sec-gae>)[7.7 节]建立了策略梯度与 Actor-Critic 的基础理论框架：@eq-pg-theorem-expectation 给出了无偏梯度表征，@eq-pg-baseline-gradient 通过状态基线降低了方差，@eq-pg-ac-update 实现了在线自举更新，@eq-pg-gae 提供了偏差-方差的连续权衡。然而，在复杂的非凸深度强化学习优化中，直接沿一阶梯度更新仍面临三类核心挑战：其一，参数空间步长过大导致策略分布剧烈偏移与性能塌缩；其二，高维连续动作空间中随机策略积分方差较大；其三，纯回报目标缺乏显式探索激励导致策略熵过早退化。以下三类代表性算法变体分别针对这三项核心问题构建了相应的数学修正机制。
+其中，第一类变体所提出的裁剪代理目标（Clipped Surrogate Objective）在大语言模型的可验证奖励强化学习（RLVR）中被广泛沿用，并进一步演化出四代代表性算法（详见#link(<sec-rlvr-lineage>)[第 7.10 节]）。
 
-=== 变体一：步长太大就让策略崩坏 —— TRPO 与 PPO
+=== 变体一：策略更新步长失控与信任域约束 —— TRPO 与 PPO
 
-#strong[病灶]：$J(bold(theta))$ 是非凸的，用估计梯度走一大步，参数可能落到一个策略分布与原来几乎无关的位置；轨迹分布随即改变，下一步的梯度估计建立在完全不同的数据上，于是崩坏不可逆。这不是"梯度错了"，而是"步子太大"。目标本身没有问题，问题在于我们只有一个局部线性近似。
+#strong[核心问题]：性能目标 $J(bold(theta))$ 关于深度神经网络参数 $bold(theta)$ 高度非凸，且欧氏参数空间的距离与策略概率分布空间的距离（如 KL 散度）之间不存在一致的比例关系。在标准梯度上升中，即使欧氏参数步长很小，也可能导致策略分布 $pi_bold(theta) (dot.op divides s)$ 发生剧烈跳变；而在强化学习中，一旦新策略劣化，后续交互将采集到低质量轨迹分布的数据，引发不可逆的#strong[性能塌缩（Performance Collapse）]。问题的本质在于一阶梯度仅在旧策略分布 $pi_(bold(theta)_upright("old"))$ 的局部邻域内有效。
 
-#strong[改动]：给每一步加上"策略不能离得太远"的约束。TRPO 在#strong[信任域]内最大化一个用旧数据即可估计的替代目标——它利用重要性采样把新策略的期望回报写成旧策略样本上的加权和，并证明该替代目标的一阶近似等于 $J$ 的梯度，因此在旧策略附近最大化它等于在提升 $J$：
+#strong[核心机制]：对每次策略更新显式施加#strong[策略分布偏移约束]，确保新策略保持在旧策略的局部信任域（Trust Region）内。
+1. #strong[信任域策略优化（TRPO，Schulman et al., 2015）]：利用#link(<sec-importance-sampling>)[第 6.4 节]的重要性采样技术，将新策略 $pi_bold(theta)$ 的局部替代目标写成旧策略 $pi_(bold(theta)_upright("old"))$ 采样分布下的期望（该替代目标在 $bold(theta) = bold(theta)_upright("old")$ 处的一阶梯度与 $J(bold(theta))$ 严格相等），并在状态平均 KL 散度有界的信任域约束下求解最大化问题：
+   $
+     #eqbox([$ max_bold(theta) quad bb(E)_(S tilde.op d^(pi_(bold(theta)_upright("old"))), A tilde.op pi_(bold(theta)_upright("old"))) [frac(pi_bold(theta) (A divides S), pi_(bold(theta)_upright("old")) (A divides S)) hat(A)_t] quad upright("s.t.") quad bb(E)_(S tilde.op d^(pi_(bold(theta)_upright("old")))) [D_upright("KL") (pi_(bold(theta)_upright("old")) (dot.op divides S) parallel pi_bold(theta) (dot.op divides S))] lt.eq delta $])
+   $ <eq-pg-trpo>
+2. #strong[近端策略优化（PPO-Clip，Schulman et al., 2017）]：为避免求解二阶约束优化问题，PPO 直接在一阶代理目标中对单步重要性采样比 $rho_t (bold(theta)) eq.dot frac(pi_bold(theta) (A_t divides S_t), pi_(bold(theta)_upright("old")) (A_t divides S_t))$ 施加区间裁剪，构造保守下界目标（Pessimistic Lower Bound）：
+   $
+     J^upright("CLIP") (bold(theta)) = bb(E)_t [min(rho_t (bold(theta)) hat(A)_t, thin upright("clip")(rho_t (bold(theta)), 1 - epsilon, 1 + epsilon) hat(A)_t)], #h(1.5em) rho_t (bold(theta)) = frac(pi_bold(theta) (A_t divides S_t), pi_(bold(theta)_upright("old")) (A_t divides S_t)) .
+   $ <eq-pg-ppo-clip>
+   裁剪算子的作用是截断超出信任域边界 $[1 - epsilon, 1 + epsilon]$ 的优化激励：当优势 $hat(A)_t > 0$ 且比值 $rho_t > 1 + epsilon$，或当优势 $hat(A)_t < 0$ 且比值 $rho_t < 1 - epsilon$ 时，目标函数关于 $bold(theta)$ 的梯度降为零，从而在无需显式计算二阶矩阵的前提下有效限制单步更新幅度。
+
+#strong[统计代价与理论性质]：TRPO 需在每步更新中利用共轭梯度法近似求解 Fisher 信息矩阵线性方程组并执行回溯线搜索，计算开销较大；PPO 仅需一阶随机梯度更新，但硬裁剪操作在边界处截断了梯度，引入了一定的渐近偏差，且有效更新步幅对超参数 $epsilon$ 较为敏感。两类方法均保持了底层贝尔曼方程的角色不变——Critic 模块依然依据贝尔曼期望方程（经由 GAE，@eq-pg-gae）估计优势函数。
+
+=== 变体二：连续动作空间下的解析最大化与确定性策略梯度 —— DDPG 与 TD3
+
+#strong[核心问题]：如#link(<sec-pg-motivation>)[第 7.2 节]所述，在连续动作空间 $cal(A) subset.eq bb(R)^m$ 中，基于价值的 Q-Learning 无法直接解析求解 $max_(a in cal(A)) Q(s, a)$；而随机策略梯度（@eq-pg-theorem-expectation）则需同时在状态空间与连续动作空间上采样积分，在高维动作空间中方差较大、样本效率受限。
+
+#strong[核心机制]：Silver et al. (2014) 提出的#strong[确定性策略梯度（Deterministic Policy Gradient, DPG）]将策略直接建模为从状态到连续动作的确定性可微映射 $a = mu_bold(theta) (s)$，并在连续可微的动作价值函数 $q^(mu_bold(theta)) (s, a)$ 下利用复合函数链式求导法则消去动作积分与最大化算子：
 $
-  #eqbox([$ max_bold(theta) quad bb(E)_(S tilde.op d^(pi_(bold(theta)_"old")), A tilde.op pi_(bold(theta)_"old")) [frac(pi_bold(theta) (A divides S), pi_(bold(theta)_"old") (A divides S)) hat(A)] quad "s.t." quad bb(E)_(S) [D_"KL" (pi_(bold(theta)_"old") (dot.op divides S) || pi_bold(theta) (dot.op divides S))] <= delta $])
-$ <eq-pg-trpo>
-这里的比值 $pi_bold(theta) / pi_(bold(theta)_"old")$ 与#link(<sec-importance-sampling>)[第 6.4 节]的离轨权重是同一个东西：用旧策略的样本来评估新策略。PPO 把硬约束换成软惩罚或裁剪，用更便宜的近似达到同样的"别走太远"：
-$
-  L^upright("CLIP") (bold(theta)) = bb(E) [min(rho_t (bold(theta)) hat(A)_t, "clip"(rho_t (bold(theta)), 1 - epsilon, 1 + epsilon) hat(A)_t)], quad rho_t (bold(theta)) = frac(pi_bold(theta) (A_t divides S_t), pi_(bold(theta)_"old") (A_t divides S_t)) .
-$ <eq-pg-ppo-clip>
-裁剪的作用是把"已经偏离太多的样本"从梯度里摘出去：一旦 $rho_t$ 越界，目标对该样本不再有梯度，超大步长的收益被截断。
-
-#strong[代价]：TRPO 每步要解一个有约束的优化（实际用共轭梯度与线搜索近似），计算与实现都重；PPO 便宜，但裁剪引入偏差，且 $epsilon$ 的取值直接影响有效步长。两者都#strong[不改]贝尔曼方程的地位——Critic 仍按 @eq-pg-gae 估计优势，贝尔曼方程仍只是估计工具。
-
-=== 变体二：连续动作下 $max$ 无从枚举 —— 确定性策略梯度（DDPG / TD3）
-
-#strong[病灶]：#link(<sec-pg-motivation>)[第 7.2 节]列的第一条困难。在#link(<sec-pg-setup>)[第 7.1 节]的连续动作设定下，$max_a q(s, a)$ 是一个逐状态的优化问题，$arg max$ 没有闭式。随机策略梯度虽然可用，但要对动作积分，方差大。
-
-#strong[改动]：把策略写成#strong[确定性]函数 $mu_bold(theta) (s)$，并用链式法则把动作从 $q$ 里"消掉"：
-$
-  #eqbox([$ nabla_bold(theta) J(bold(theta)) = bb(E)_(S tilde.op d^(mu_bold(theta))) [nabla_bold(theta) mu_bold(theta) (S)^top nabla_a q^(mu_bold(theta)) (S, a) |_(a = mu_bold(theta) (S))] $])
+  #eqbox([$ nabla_bold(theta) J(bold(theta)) = bb(E)_(S tilde.op d^(mu_bold(theta))) [#mhl($nabla_bold(theta) mu_bold(theta) (S)^top$) #mhlg($nabla_a q^(mu_bold(theta)) (S, a) divides_(a = mu_bold(theta) (S))$)] $])
 $ <eq-pg-dpg>
-它读作：沿"$q$ 对动作的梯度"方向调整动作，再把这一调整反传到策略参数。动作不再是采样出来的，积分与 $max$ 都消失了。
+上式的几何意义十分直观：Critic 提供动作价值关于连续动作向量的上升方向 $nabla_a q(S, a)$，Actor 则通过链式法则调整策略参数 $bold(theta)$，使输出动作 $mu_bold(theta) (S)$ 沿动作价值增大的方向移动，从而以可微梯度上升替代了离散空间中的不可微算子 $arg max_a Q(s, a)$（Silver et al. 证明了当随机策略的方差趋于零时，随机策略梯度定理 @eq-pg-theorem-sum 精确收敛于确定性策略梯度定理 @eq-pg-dpg）。
 
-#strong[代价]：确定性策略只能沿一个方向探索，必须在动作上外加探索噪声（DDPG 用噪声扰动的行为策略采数据，再用离轨数据训练确定性 Actor）——这又回到了#link(<sec-importance-sampling>)[第 6.4 节]的分布错配，只不过在确定性策略下由离轨 $Q$ 学习直接吸收。更深的问题是 $nabla_a q$ 本身是学出来的：$max$ 的高估偏差（#link(<sec-td-action-value>)[第 6.6 节]的 Double Q 所修的那个病灶）在这里变成" Actor 追着被高估的 $q$ 跑"，TD3 因此引入两个 Critic 取较小值并延迟更新 Actor。
+#strong[统计代价与理论性质]：由于确定性策略 $mu_bold(theta) (s)$ 自身不具备随机探索能力，必须采用叠加外部噪声的行为策略（如 $b(s) = mu_bold(theta) (s) + cal(N)(0, sigma^2)$）进行离轨采样，并通过基于动作价值贝尔曼期望方程的离轨 Critic（如 #strong[DDPG]，Lillicrap et al., 2016）训练价值网络 $Q_bold(w) (s, a)$。然而，在函数近似下，Actor 持续沿 $nabla_a Q_bold(w)$ 方向寻优会迅速利用并放大 Critic 网络的局部高估误差（即#link(<sec-td-action-value>)[第 6.6 节]第 4 项最大化偏差的连续空间对应物）。为此，#strong[TD3]（Twin Delayed DDPG，Fujimoto et al., 2018）引入截断双 Critic 网络（取 $min_(i = 1, 2) Q_(bold(w)_i) (S_(t + 1), tilde(a))$ 作为贝尔曼自举目标）、目标策略平滑正则与延迟 Actor 更新三项机制以抑制高估发散。
 
-=== 变体三：目标本身要"带探索" —— SAC 与软贝尔曼方程
+=== 变体三：熵正则化与最大熵强化学习 —— SAC 与软贝尔曼方程
 
-#strong[病灶]：@eq-pg-objective 只奖励回报，不奖励探索。随机策略的熵在训练早期自然较大，但随着 $J$ 上升会迅速塌缩到一个接近确定性的策略，之后梯度信号变弱；更进一步，若最优策略需要保持随机性（如多峰最优、对抗环境），纯回报目标直接把它排除在外。
+#strong[核心问题]：标准期望回报目标 @eq-pg-objective 仅最大化累积奖励，缺乏维持策略随机性的内生机制。在训练过程中，策略分布容易过早塌缩为近乎确定性的单峰分布，导致探索停滞并陷入局部次优解；此外，在存在多条等价最优路径（多峰最优）或外部扰动的环境中，保持适度的策略熵能够显著提升控制鲁棒性。
 
-#strong[改动]：在每一步奖励里加上策略熵，得到一个#strong[最大熵]目标：
+#strong[核心机制]：Haarnoja et al. (2018) 提出的#strong[软演员-评论家（Soft Actor-Critic, SAC）]将策略在每个访问状态下的信息熵 $cal(H)(pi(dot.op divides S_t)) eq.dot bb(E)_(A_t tilde.op pi(dot.op divides S_t)) [- log pi(A_t divides S_t)]$ 作为附加内在奖励并入优化目标，构建#strong[最大熵强化学习（Maximum Entropy RL）]目标函数：
 $
-  #eqbox([$ J_"soft" (bold(theta)) = bb(E)_(pi_bold(theta)) [sum_(t = 0)^oo gamma^t (R_(t + 1) + alpha cal(H) (pi_bold(theta) (dot.op divides S_t)))] $])
+  #eqbox([$ J_upright("soft") (bold(theta)) = bb(E)_(tau tilde.op pi_bold(theta)) [sum_(t = 0)^oo gamma^t (R_(t + 1) + #mhl($alpha cal(H) (pi_bold(theta) (dot.op divides S_t))$))] $])
 $ <eq-pg-sac-objective>
-$alpha > 0$ 是熵的温度。这个改动看起来只是加了一项，但它把对象的定义改了：现在要评估的不再是 $v_pi$，而是"软"价值。于是贝尔曼期望方程本身也要改，得到#strong[软贝尔曼方程]：
+其中温度系数 $alpha > 0$ 控制熵正则项与原始奖励之间的相对权重（当 $alpha arrow.r 0$ 时退化为标准强化学习）。由于目标函数中计入了未来各时刻的策略熵，状态价值与动作价值的定义相应推广为包含未来熵收益的#strong[软状态价值 $v_upright("soft")^pi (s)$] 与#strong[软动作价值 $q_upright("soft")^pi (s, a)$]（注意按定义，$q_upright("soft")^pi (s, a)$ 固定了当前时刻 $t$ 的动作 $A_t = a$，故仅包含从 $t + 1$ 时刻起的未来策略熵）。由此可导出修正后的#strong[软贝尔曼期望方程（Soft Bellman Expectation Equations）]：
 $
-  #eqbox([$ q_"soft"^pi (s, a) = bb(E) [R_(t + 1) + gamma (v_"soft"^pi (S_(t + 1)) - alpha log pi (A_(t + 1) divides S_(t + 1))) divides S_t = s, A_t = a] $]) \
-  #eqbox([$ v_"soft"^pi (s) = bb(E)_(A tilde.op pi) [q_"soft"^pi (s, a) - alpha log pi (a divides s)] $])
+  #eqbox([$ q_upright("soft")^pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1)) [R_(t + 1) + gamma #mhlg($v_upright("soft")^pi (S_(t + 1))$) divides S_t = s, A_t = a] $]) \
+  #eqbox([$ v_upright("soft")^pi (s) = bb(E)_(A_t tilde.op pi(dot.op divides s)) [#mhlg($q_upright("soft")^pi (s, A_t)$) - #mhl($alpha log pi (A_t divides s)$)] $])
 $ <eq-pg-soft-bellman>
-注意它与 @eq-bellman-exp-vv 的差别精确在哪里：右端多了一个 $- alpha log pi$ 项，其余结构（单步奖励 + 折后的后继价值）一模一样。因此它仍是#strong[同一个求解框架]下的方程，可以照第 6 章的方法解——这正是 @tab-pg-bellman-boundary 最后一行说"是，显式例外"的理由。SAC 的实现就是交替：用软贝尔曼方程做 Critic 的一步 TD 更新，再用重参数化技巧对 @eq-pg-sac-objective 做梯度上升。
+将 @eq-pg-soft-bellman 的第二式（$v_upright("soft")^pi arrow.r q_upright("soft")^pi$ 桥接式，其中已包含状态 $S_(t + 1)$ 处的熵项 $- alpha log pi(A_(t + 1) divides S_(t + 1))$）代入第一式（$q_upright("soft")^pi arrow.r v_upright("soft")^pi$ 桥接式），即得软动作价值的复合自递推方程：
+$
+  q_upright("soft")^pi (s, a) = bb(E)_(R_(t + 1), S_(t + 1), A_(t + 1)) [R_(t + 1) + gamma (#mhlg($q_upright("soft")^pi (S_(t + 1), A_(t + 1))$) - #mhl($alpha log pi (A_(t + 1) divides S_(t + 1))$)) divides S_t = s, A_t = a] .
+$ <eq-pg-soft-bellman-qq>
+对比第 3 章的标准贝尔曼期望方程（@eq-bellman-exp-vq 至 @eq-bellman-exp-qq）可见，软贝尔曼方程完全保留了“单步即时奖励 + 折扣后继价值”的压缩映射结构，仅在策略层桥接与自递推中额外计入了策略熵修正项 $- alpha log pi$。因此，软贝尔曼算子同样满足 $gamma$-压缩性质，可直接应用#link(<sec-value-estimation>)[第 6 章]的离轨时序差分方法进行迭代求解——这正是 @tab-pg-bellman-boundary 将 SAC 列为显式求解贝尔曼方程代表的原因。在算法实现上，SAC 交替执行基于 @eq-pg-soft-bellman-qq 的双软 Q 网络离轨 TD 更新，以及基于重参数化技巧（Reparameterization Trick）的随机策略梯度上升。
 
-#strong[代价]：目标换了，最优策略也换了——SAC 求的不是 $pi_star$，而是熵正则下的最优策略；$alpha$ 的取值直接决定"探索换多少回报"，需要调节（实践中让 $alpha$ 随目标熵自动调整，但这已属实现细节，不在本章范围）。
+#strong[统计代价与理论性质]：引入熵正则项改变了原 MDP 的最优不动点——SAC 收敛到的是最大熵目标 @eq-pg-sac-objective 下的软最优策略（玻尔兹曼分布形式），而非原始确定性最优策略 $pi_star$；同时，算法性能对温度系数 $alpha$ 的尺度较为敏感（现代实现通常设定目标熵下界并通过对偶梯度下降自动调节 $alpha$）。
 
 #figure(
-  caption: [三组工程变体各自修复的病灶与代价。三者都保留 @eq-pg-theorem-expectation 的梯度形式，改的是"怎么走这一步"或"目标是什么"],
+  caption: [策略梯度三类重要扩展变体的核心问题、改进方案与统计性质对比],
   text(size: 8.6pt, table(
     columns: (0.75fr, 1.5fr, 1.3fr, 1.25fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon),
-    table.header([变体], [病灶], [改了什么], [代价]),
+    table.header([算法变体], [核心问题], [核心机制与改进方案], [统计代价与理论性质]),
     table.hline(),
-    [TRPO], [步长过大使策略崩坏], [信任域约束，用离轨比值构造替代目标（@eq-pg-trpo）], [每步解约束优化，实现重],
+    [TRPO], [欧氏步长难以控制策略分布偏移，步长过大会引发性能塌缩], [施加平均 KL 散度信任域约束，最大化离轨重要性采样代理目标（@eq-pg-trpo）], [每步需用共轭梯度法与线搜索求解二阶约束优化，计算开销较大],
     table.hline(stroke: 0.6pt + accent),
-    [PPO], [同上，但要便宜], [裁剪离轨比值（@eq-pg-ppo-clip）], [裁剪引入偏差，有效步长依赖 $epsilon$],
+    [PPO], [同上，旨在以纯一阶梯度方法近似信任域约束], [对单步似然比施加区间 $[1 - epsilon, 1 + epsilon]$ 裁剪，构造保守下界目标（@eq-pg-ppo-clip）], [裁剪边界处截断梯度引入偏差，有效步幅依赖于超参数 $epsilon$],
     table.hline(stroke: 0.6pt + accent),
-    [DDPG / TD3], [连续动作下 $max$ 无闭式、动作积分方差大], [确定性策略 + 链式法则（@eq-pg-dpg）], [需外加探索噪声；$nabla_a q$ 偏差被 Actor 放大],
+    [DDPG / TD3], [连续动作空间下 $max_a Q$ 难以解析求解，随机策略积分方差大], [采用确定性策略 $mu_bold(theta)(s)$ 并由链式法则沿 $nabla_a Q$ 反传梯度（@eq-pg-dpg）], [需外加探索噪声；Actor 易放大 $Q$ 的高估误差（TD3 以双 Critic 抑制）],
     table.hline(stroke: 0.6pt + accent),
-    [SAC], [纯回报目标不奖励探索、熵会塌缩], [最大熵目标 + 软贝尔曼方程（@eq-pg-soft-bellman）], [最优策略改变；$alpha$ 需调节],
+    [SAC], [纯回报目标缺乏探索激励，策略熵易过早退化并陷入局部极值], [最大化熵正则目标（@eq-pg-sac-objective），Critic 求解软贝尔曼方程（@eq-pg-soft-bellman）], [最优不动点改变为软最优策略；温度系数 $alpha$ 需自适应调节],
     table.hline(),
-    [REINFORCE / A2C], [（基准，无额外补丁）], [@eq-pg-reinforce-update \/ @eq-pg-ac-update], [高方差；自举偏差],
+    [REINFORCE / A2C], [（基础同轨策略梯度基准）], [直接沿 @eq-pg-reinforce-update 或 @eq-pg-ac-update 做一阶梯度更新], [REINFORCE 方差高；A2C 含 Critic 自举逼近偏差且无步长信任域保护],
   )),
 ) <tab-pg-variants>
 
 #divider()
 
-== 变体一的延伸：大语言模型强化学习中的策略梯度算法族
+== 信任域裁剪框架的延伸：大语言模型可验证奖励强化学习（RLVR）算法谱系
 <sec-rlvr-lineage>
 
-#link(<sec-pg-variants>)[第 7.9 节]的三组变体都在第 7.1 节的设定下修补策略梯度。变体一给出的裁剪外壳（@eq-pg-ppo-clip）没有停在控制任务里：大语言模型的可验证奖励强化学习（Reinforcement Learning from Verifiable Rewards, RLVR）把它原样继承下来，并在其上接连演化出 GRPO、DAPO、GSPO、DCPO 四代算法。本节沿用第 7.9 节的写法（病灶 / 改动 / 代价），同时把它们放进同一个框架：外壳不变，每次只动三个坐标中的某几个。
+#link(<sec-pg-variants>)[第 7.9.1 节]所建立的 PPO 裁剪代理目标（@eq-pg-ppo-clip）不仅在连续控制领域成为标准基线，还在大语言模型（LLM）的后训练阶段得到了广泛继承与深入发展。在面向数学推理与代码生成等任务的可验证奖励强化学习（Reinforcement Learning from Verifiable Rewards, RLVR）中，研究者在 PPO 裁剪代理目标的统一框架下相继提出了 GRPO、DAPO、GSPO 与 DCPO 四代代表性算法。本节从问题设定出发，将这四代算法的演进统一归结为#strong[三个核心设计维度（优势函数估计、信任域比率与裁剪边界、目标函数归一化尺度）]上的系统性改进。
 
-=== 场景：一条轨迹是一个 token 序列，奖励只在末尾给出
+=== 任务建模：自回归词元（Token）序列生成与稀疏末端奖励
 
-RLVR 的任务形式与第 7.1 节有三处不同，先写清楚，否则后面的公式会被误读：
+在将策略梯度应用于自回归大语言模型时，其马尔可夫决策过程建模与#link(<sec-pg-setup>)[第 7.1 节]的标准设定相比具有三项结构性特征：
 
-1. #strong[轨迹是变长 token 序列]：给定 prompt $x$，策略生成回复 $y = (y_1, dots, y_(|y|))$；每个 token 是一个动作，动作空间是词表 $cal(V)$；第 $t$ 步的状态是已生成的前缀 $S_t = (x, y_(<t))$。
-2. #strong[回报只在序列末尾给出]：$R(x, y) in [0, 1]$ 由规则校验（答案是否正确）给出，中间没有奖励，折扣因子取 $gamma = 1$。
-3. #strong[同一 prompt 采一组回复]：一次生成 $G$ 条 $y_i tilde.op pi_(bold(theta)_"old") (dot.op divides x)$，组内比较几乎免费。
+1. #strong[自回归序列状态与有限词表动作空间]：给定输入提示（Prompt）$x$，语言模型策略自回归地生成长度为 $|y|$ 的词元序列（Response）$y = (y_1, y_2, dots, y_(|y|))$。在时刻 $t$，动作 $A_t = y_t$ 取自有限词表 $cal(V)$，状态 $S_t = (x, y_(<t))$ 由提示与已生成的前缀词元序列确定性地拼接而成（环境状态转移是完全确定性的）。
+2. #strong[序列末端稀疏可验证奖励与无折扣设定]：中间生成步骤无即时奖励（$t < |y|$ 时 $R_t = 0$），仅在序列生成结束时由确定性规则校验器（如答案匹配或单元测试）给出整条序列的标量奖励 $R(x, y) in [0, 1]$，且折扣因子通常取 $gamma = 1$。
+3. #strong[同提示成组采样（Group Sampling）]：在每次采样阶段，针对同一输入提示 $x$，从旧策略 $pi_(bold(theta)_upright("old")) (dot.op divides x)$ 中独立并行采样一组共 $G$ 条完整回复 ${y_1, y_2, dots, y_G}$，从而天然具备对同一状态起点下的多条轨迹回报进行组内统计比较的条件。
 
-于是序列概率是逐 token 条件概率的乘积：
+由链式法则，整条回复序列 $y$ 在策略 $pi_bold(theta)$ 下的条件生成概率等于各时间步词元条件概率的连乘积：
 $
   pi_bold(theta) (y divides x) = product_(t = 1)^(|y|) pi_bold(theta) (y_t divides x, y_(<t)) .
 $ <eq-rlvr-seq-prob>
 
-在 $gamma = 1$、奖励只在末尾的设定下，$q_(pi_bold(theta)) (S_t, A_t) = bb(E) [R(x, y) divides S_t, A_t]$ 仍然良定义，但它随前缀变化，而#strong[每个前缀只被采样一次]：第 6.3 节的样本均值在这里没有同状态样本可平均，第 7.6 节的 Critic 也只能给出有偏估计。这条约束决定了后面全部设计——任何算法都必须在"学一个 Critic 逐 token 估计"与"放弃逐 token 差异、只保留序列级的相对好坏"之间选一边。
+在 $gamma = 1$ 且仅末端存在奖励 $R(x, y)$ 的设定下，任意时刻 $t$ 的真实动作价值仍良定义为从前缀状态 $(x, y_(<t))$ 选择词元 $y_t$ 后的条件期望回报 $q_(pi_bold(theta)) (S_t, A_t) = bb(E)_(y_(>t) tilde.op pi_bold(theta)) [R(x, y) divides x, y_(lt.eq t)]$。然而，由于词表空间庞大，#strong[每条生成轨迹中的长前缀状态 $(x, y_(<t))$ 在单次批次中几乎只被访问一次]：既无法直接对同一中间前缀状态做多次蒙特卡洛树采样求均值，而训练一个与生成模型同等参数规模的独立 Critic 价值网络不仅显存与计算开销高昂，其单样本拟合误差还会直接传递为策略梯度的偏差。这一结构性矛盾构成了 RLVR 算法演进的起点——即如何在#strong[移除独立 Critic 价值网络]的前提下，构造低方差、少偏差的优势估计与稳定的信任域约束。
 
-=== 统一外壳与三个坐标
+=== 统一裁剪代理目标与三个核心设计维度
 
-四代算法共用的目标，是把 @eq-pg-ppo-clip 的裁剪逐 token 套到上面的 token MDP 上，再在外层对组与 token 做两重平均：
+上述四代 RLVR 算法共享基于 @eq-pg-ppo-clip 的#strong[裁剪代理目标函数（Clipped Surrogate Objective）]骨架，其一般形式可统一写为对提示分布、组内 $G$ 条采样回复及序列内词元位置的嵌套加权期望：
 $
-  J_"RLVR" (bold(theta)) = bb(E)_(x, thin y_i tilde.op pi_(bold(theta)_"old")) [ frac(1, G) sum_(i = 1)^G frac(1, |y_i|) sum_(t = 1)^(|y_i|) min(rho_(i,t) hat(A)_(i,t), "clip"(rho_(i,t), 1 - epsilon_"low", 1 + epsilon_"high") hat(A)_(i,t)) ]
+  J_upright("RLVR") (bold(theta)) = bb(E)_(x tilde.op cal(D), thin {y_i}_(i=1)^G tilde.op pi_(bold(theta)_upright("old")) (dot.op divides x)) [ frac(1, G) sum_(i = 1)^G frac(1, |y_i|) sum_(t = 1)^(|y_i|) min(rho_(i,t) (bold(theta)) hat(A)_(i,t), thin upright("clip")(rho_(i,t) (bold(theta)), 1 - epsilon_upright("low"), 1 + epsilon_upright("high")) hat(A)_(i,t)) ] ,
 $ <eq-rlvr-shell>
+其中第 $i$ 条回复在第 $t$ 个词元位置上的单步重要性采样比定义为：
 $
-  rho_(i,t) (bold(theta)) = frac(pi_bold(theta) (y_(i,t) divides x, y_(i,<t)), pi_(bold(theta)_"old") (y_(i,t) divides x, y_(i,<t))) .
+  rho_(i,t) (bold(theta)) eq.dot frac(pi_bold(theta) (y_(i,t) divides x, y_(i,<t)), pi_(bold(theta)_upright("old")) (y_(i,t) divides x, y_(i,<t))) .
 $ <eq-rlvr-token-ratio>
 
-与 @eq-pg-ppo-clip 逐项对照，差别只有三处：内层按 token 展开（第 $t$ 步的动作是 $y_t$）；外层多了一重组与回复的平均；上下界允许不对称（GRPO 取 $epsilon_"low" = epsilon_"high" = epsilon$，DAPO 起拆成两个常数）。与第 6.1 节"三条路线共用同一个更新壳"的判断方式一样，四代算法之间的全部差异都落在三个坐标上：
+与标准 PPO 目标（@eq-pg-ppo-clip）相比，@eq-rlvr-shell 将内层求和显式展开至词元粒度，外层引入了对同提示组内 $G$ 条回复的平均，并将裁剪上下界推广为允许非对称的参数 $(epsilon_upright("low"), epsilon_upright("high"))$。正如#link(<sec-expectation-estimation-theory>)[第 6.1 节]通过三个设计维度统一价值估计算法一样，四代 RLVR 算法之间的本质差异可完全归结为以下#strong[三个核心设计维度]：
 
-1. #strong[坐标一：优势 $hat(A)_(i,t)$ 从哪里来]。决定信用分配到什么粒度、是否需要价值网络：Critic 与 GAE（第 7.6--7.7 节）、同一 prompt 的组内相对回报、跨步累积的平滑统计。
-2. #strong[坐标二：信任域以什么为单位、边界取什么函数]。决定"多快允许策略移动"与"哪些 token 被裁掉"：单 token 概率比配常数界、整条序列的似然比配常数界、单 token 概率比配依赖旧概率的界。
-3. #strong[坐标三：损失怎么归一化]。决定长回复与短回复的相对权重：先组内再回复内（$frac(1, G) sum_i frac(1, |y_i|) sum_t$）、批内 token 等权（$frac(1, sum_i |y_i|) sum_i sum_t$）、只在回复内平均（$sum_i frac(1, |y_i|) sum_t$）。
+1. #strong[设计维度一：优势函数估计量 $hat(A)_(i,t)$ 的构造方式]——决定了信用分配（Credit Assignment）的时间粒度以及是否依赖独立 Critic 网络：是采用基于 Critic 网络的逐词元 GAE（标准 PPO），还是采用同提示组内标准化相对回报（GRPO），抑或结合跨步历史统计的平滑优势估计（DCPO）。
+2. #strong[设计维度二：信任域似然比的定义粒度与裁剪边界函数]——决定了策略分布偏移的度量单位与截断机制：是以单词元概率比 $rho_(i,t)$ 配合对称/非对称常数边界（GRPO / DAPO），还是以序列级几何平均似然比 $s_i$ 配合序列级常数边界（GSPO），抑或以单词元概率比配合依赖于旧策略概率 $q_(i,t)$ 的自适应边界函数（DCPO）。
+3. #strong[设计维度三：目标函数关于序列长度的归一化尺度]——决定了不同长度回复在总梯度中的相对权重：是采用“先对每条回复内部按长度 $|y_i|$ 平均、再对组内 $G$ 条回复平均”的序列级归一化（GRPO），还是采用“对批次内所有词元等权平均”的词元级归一化（DAPO），抑或采用仅在单条回复内部平均的归一化方式（DCPO）。
 
-三个坐标之外还有一个外围开关：与参考策略的 KL 惩罚。它在 RLHF 里承担"不要偏离初始模型"的职责，服务于对齐；RLVR 的奖励来自规则校验，不存在奖励模型被攻破的问题，因此从 DAPO 起被关掉（四代里只有 GRPO 保留）。@fig-rlvr-lineage 把这条线与每次动到的坐标画在一起。
+除上述三个核心维度外，目标函数中还常包含一项关于参考策略 $pi_upright("ref")$ 的 KL 散度正则项 $beta D_upright("KL")(pi_bold(theta) parallel pi_upright("ref"))$。在基于人类反馈的强化学习（RLHF）中，该项用于防止策略过度迎合不完美的神经奖励模型（Reward Hacking）；而在 RLVR 中，由于奖励由精确的规则校验器给出，无需担心奖励模型失真，因此自 DAPO 起的后续算法常将该 KL 正则项系数置零以释放长链推理策略的探索空间。@fig-rlvr-lineage 展示了这四代算法沿三个核心维度的演进脉络。
 
 #figure(
   {
@@ -2225,144 +2267,146 @@ $ <eq-rlvr-token-ratio>
       edge-stroke: 0.7pt + accent,
       node-inset: 4.5pt,
       node-corner-radius: 3pt,
-      node((0, 0), text(size: 7.8pt)[*不变量：PPO 裁剪外壳*（@eq-pg-ppo-clip） \ 逐 token 取 $min(rho_(i,t) hat(A)_(i,t), "clip"(rho_(i,t), 1 - epsilon_"low", 1 + epsilon_"high") hat(A)_(i,t))$ \ 信任域由 TRPO 的 KL 硬约束换成比值裁剪], fill: accent-soft, width: 96mm),
-      node((0, 1), text(size: 7.4pt)[*PPO（RLHF）*：Critic + GAE 逐 token 估优势，每个 prompt 一条回复 \ 代价：价值网络与策略同规模；前缀只采样一次，拟合误差直接进入梯度], width: 96mm),
-      node((0, 2), text(size: 7.4pt)[*GRPO*：坐标一 —— 组内标准化的回报广播为该回复各 token 的常数优势（@eq-rlvr-group-adv） \ 代价：序列内信用分配消失；同奖励组零梯度；$1 / sigma$ 与 $1 / |y_i|$ 引入的偏差], width: 96mm),
-      node((0, 3), text(size: 7.4pt)[*DAPO*：坐标二、三 + 数据层 —— 非对称裁剪、批内 token 等权（@eq-rlvr-dapo-loss）、动态采样、超长奖励整形；关掉 KL \ 代价：整组样本被丢弃], width: 96mm),
-      node((0, 4), text(size: 7.4pt)[*GSPO*：坐标二 —— 单位换成序列似然比（@eq-rlvr-gspo-ratio），序列级裁剪，$epsilon$ 降到 $10^(-4)$ 量级 \ 代价：比值有偏；整条回复一起被裁], width: 96mm),
-      node((0, 5), text(size: 7.4pt)[*DCPO*：坐标一、二、三 —— 边界写成旧概率的函数（@eq-rlvr-dcpo-bounds），优势跨步平滑，损失只在回复内平均 \ 代价：依赖旧概率的可靠估计，边界须设上限兜底], width: 96mm),
+      node((0, 0), text(size: 7.8pt)[*共同基础：PPO 裁剪代理目标框架*（@eq-pg-ppo-clip、@eq-rlvr-shell） \ 逐词元或逐序列最大化 $min(rho_(i,t) hat(A)_(i,t), thin upright("clip")(rho_(i,t), 1 - epsilon_upright("low"), 1 + epsilon_upright("high")) hat(A)_(i,t))$ \ 以重要性采样比率裁剪近似 TRPO 的信任域约束], fill: accent-soft, width: 96mm),
+      node((0, 1), text(size: 7.4pt)[*PPO（RLHF 基准）*：以独立 Critic 网络配合 GAE 逐词元估计优势，单提示单回复采样 \ 局限性：Critic 价值网络使显存与算力开销翻倍；长前缀仅单次采样，价值拟合偏差直接污染策略梯度], width: 96mm),
+      node((0, 2), text(size: 7.4pt)[*GRPO*：维度一改进 —— 以同提示组内标准化回报作为序列内各词元的共享优势（@eq-rlvr-group-adv），移除 Critic \ 局限性：序列内词元级信用分配缺失；组内奖励全同导致零梯度；$1 / sigma$ 与 $1 / |y_i|$ 引入难度与长度权重偏差], width: 96mm),
+      node((0, 3), text(size: 7.4pt)[*DAPO*：维度二、三改进 + 数据过滤 —— 非对称上界放宽（Clip-Higher）、批次词元等权归一化（@eq-rlvr-dapo-loss）、动态过滤全同组、超长奖励整形并移除 KL 正则 \ 局限性：丢弃全同组样本增加了额外采样开销], width: 96mm),
+      node((0, 4), text(size: 7.4pt)[*GSPO*：维度二改进 —— 将重要性比率与裁剪单位由单词元提升为长度归一化序列似然比（@eq-rlvr-gspo-ratio），匹配序列级奖励 \ 局限性：几何平均似然比有偏；序列级裁剪将整条回复内的词元梯度一并截断], width: 96mm),
+      node((0, 5), text(size: 7.4pt)[*DCPO*：维度一、二、三综合改进 —— 裁剪边界由旧概率 $q_(i,t)$ 自适应决定（@eq-rlvr-dcpo-bounds）、跨步平滑优势 SAS（@eq-rlvr-sas）、回复内归一化 \ 局限性：对旧概率数值精度敏感，低概率处需引入硬上限超参数截断], width: 96mm),
       edge((0, 0), (0, 1), "->"),
-      edge((0, 1), (0, 2), "->", text(size: 6.6pt)[坐标一], label-side: right),
-      edge((0, 2), (0, 3), "->", text(size: 6.6pt)[坐标二、三 + 数据层], label-side: right),
-      edge((0, 3), (0, 4), "->", text(size: 6.6pt)[坐标二], label-side: right),
-      edge((0, 4), (0, 5), "->", text(size: 6.6pt)[坐标一、二、三], label-side: right),
+      edge((0, 1), (0, 2), "->", text(size: 6.6pt)[维度一], label-side: right),
+      edge((0, 2), (0, 3), "->", text(size: 6.6pt)[维度二、三 + 采样层], label-side: right),
+      edge((0, 3), (0, 4), "->", text(size: 6.6pt)[维度二], label-side: right),
+      edge((0, 4), (0, 5), "->", text(size: 6.6pt)[维度一、二、三], label-side: right),
     )
   },
-  caption: [变体一的裁剪外壳在大语言模型 RLVR 中的四代延伸：外壳 @eq-rlvr-shell 不变，每次只动三个坐标中的某几个。边上的标注是该代算法动到的坐标，代价一栏是这次改动新引入的问题],
+  caption: [大语言模型 RLVR 四代策略梯度算法在统一裁剪代理目标 @eq-rlvr-shell 下的演进谱系：各代算法围绕优势估计（维度一）、信任域比率与裁剪边界（维度二）及长度归一化尺度（维度三）针对性地解决前代算法的理论局限],
 ) <fig-rlvr-lineage>
 
-=== 第一代：GRPO —— 把 Critic 换成组内基线
+=== 第一代：GRPO —— 以组内相对回报基线替代 Critic 价值网络
 
-#strong[病灶]：@tab-pg-advantage-estimators 里偏差最小的一档是 GAE，而 GAE 需要一个通常与策略同规模的价值网络，在 LLM 上意味着显存与算力翻倍。更根本的是上面那条约束：$q_(pi_bold(theta)) (S_t, A_t)$ 随前缀变化，每个前缀却只出现一次，Critic 的拟合误差无法靠同状态的多样本平均消掉；第 7.6 节已指出，这个误差直接乘在 $nabla_bold(theta) log pi_bold(theta)$ 上，是梯度偏差，不是可以靠多跑几步摊平的噪声。
+#strong[核心问题]：在标准 PPO 中，广义优势估计（GAE，@eq-pg-gae）依赖一个通常与策略网络同等参数规模的 Critic 价值网络，在大语言模型训练中带来近一倍的显存与计算负担；同时，由于 RLVR 仅在序列末尾提供稀疏奖励且每个长前缀状态仅被采样一次，Critic 对中间词元价值的拟合存在较大逼近误差，直接降低了策略梯度估计的准确性。
 
-#strong[改动]：放弃逐 token 的优势，只保留序列级的相对好坏。对同一 prompt 的 $G$ 条回复，用组内标准化后的回报作为该回复内所有 token 的常数优势：
+#strong[核心机制]：Shao et al. (2024) 提出的#strong[组相对策略优化（Group Relative Policy Optimization, GRPO）]完全移除了 Critic 网络，转而在维度一上利用同提示下 $G$ 条采样回复的末端奖励统计量构造基线：将组内标准化后的相对回报直接赋值给该回复序列中的所有词元作为共享优势估计：
 $
-  hat(A)_i = frac(R_i - mu, sigma), quad mu = frac(1, G) sum_(j = 1)^G R_j, quad sigma = sqrt(frac(1, G) sum_(j = 1)^G (R_j - mu)^2), quad hat(A)_(i,t) eq.dot hat(A)_i .
+  hat(A)_i = frac(R_i - mu_R, sigma_R), quad mu_R = frac(1, G) sum_(j = 1)^G R_j, quad sigma_R = sqrt(frac(1, G) sum_(j = 1)^G (R_j - mu_R)^2), quad hat(A)_(i,t) eq.dot hat(A)_i quad (forall t in {1, dots, |y_i|}) .
 $ <eq-rlvr-group-adv>
 
-这不是新原理，而是#link(<sec-pg-baseline>)[第 7.5 节]基线补丁的极限形式：基线从 $b(s) = hat(v)(s)$ 换成"同一 prompt 其他回复的平均回报"。命题 7.2 保证只依赖状态、不依赖动作的基线不改变梯度期望。严格地说，$mu$ 含 $R_i$ 自身，与留一均值 $(1 / (G - 1)) sum_(j eq.not i) R_j$ 相比，@eq-rlvr-group-adv 只是整体乘了 $(G - 1) / G$；再除以随机的 $sigma$ 还会引入非线性的小偏差。$G$ 通常取 $8$--$64$，这两处偏差都小于提高采样数换来的方差收益。
+从理论上看，@eq-rlvr-group-adv 是#link(<sec-pg-baseline>)[第 7.5 节]状态基线定理（#link(<prop-7.2>)[命题 7.2]）在序列级 MDP 上的经验近似：它将基线函数 $b(x) = v_(pi_bold(theta)) (x)$ 替换为同一提示状态 $x$ 下多条独立采样轨迹的平均回报 $mu_R$。严格而言，由于 $mu_R$ 包含了当前样本回报 $R_i$ 自身（对比严格无偏的留一法均值基线 $mu_(-i) = frac(1, G - 1) sum_(j eq.not i) R_j$，有 $R_i - mu_R = frac(G - 1, G)(R_i - mu_(-i))$，仅差常数因子 $frac(G - 1, G)$），且分母除以了依赖样本的经验标准差 $sigma_R$，@eq-rlvr-group-adv 会引入随组大小 $G$ 增大而衰减的微弱归一化偏差，但在 $G in [8, 64]$ 的常规设置下显著降低了策略梯度的方差并免去了 Critic 网络开销。
 
 #block(breakable: false, above: 1em)[
-#strong[代价]：三条，后两代算法逐条对应。
+#strong[统计代价与理论局限]：GRPO 的简化设计引入了三项新的理论局限，构成了后续三代算法的改进动因：
 
-1. #strong[序列内信用分配消失]：$hat(A)_(i,t)$ 在一条回复内是常数，"这一步算对了、那一步算错了"在梯度里没有区别。
-2. #strong[零梯度]：组内回报全相等时 $sigma = 0$，所有 $hat(A)_i = 0$，这个 prompt 贡献零梯度。全对与全错都会落进这个状态，而全对的组在训练中越往后越多。
-3. #strong[归一化偏差]：$1 / sigma$ 放大"同组内难题"（$sigma$ 小）的梯度，$1 / |y_i|$ 让短回复的每个 token 权重更大——两者都与"这个 token 有多重要"无关。
+1. #strong[序列内词元级信用分配缺失]：同一回复 $y_i$ 内的所有词元共享完全相同的标量优势 $hat(A)_(i,t) equiv hat(A)_i$，无法区分长链推理过程中关键正确推导步骤与冗余或局部错误步骤的个体贡献。
+2. #strong[组内全同奖励下的零梯度退化]：当同一提示下的 $G$ 条回复全部正确（$R_j equiv 1$）或全部错误（$R_j equiv 0$）时，组内方差为零、分子 $R_i - mu_R = 0$，导致整组样本的优势估计 $hat(A)_i equiv 0$，对该提示产生零梯度更新，降低了训练中后期的有效样本利用率。
+3. #strong[长度与难度归一化偏差]：@eq-rlvr-shell 中的序列级归一化因子 $frac(1, |y_i|)$ 使较短回复中的单个词元获得更大的梯度权重（在负优势下倾向于惩罚短回复、诱发回复长度膨胀，在正优势下则稀释长推理链的奖励信号）；同时分母 $sigma_R$ 会放大组内方差极小样本的梯度步幅。
 ]
 
-=== 第二代：DAPO —— 坐标二、坐标三各一处，外加两处数据层补丁
+=== 第二代：DAPO —— 非对称裁剪、词元级归一化与动态采样过滤
 
-#strong[病灶]：GRPO 的三条代价在长链推理场景下同时放大；此外还有第四条——生成长度有上限，被截断的回复既拿不到正确的奖励，也不是策略真实的选择，它的回报是噪声。
+#strong[核心问题]：在长思维链（Long-CoT）推理训练中，GRPO 的对称裁剪上界限制了低概率探索词元的概率提升（引发策略熵过早坍缩），全对或全错提示组导致有效梯度比例持续下降，序列级长度归一化 $frac(1, |y_i|)$ 扭曲了长短回复的权重，且超出最大上下文长度被强制截断的回复带来了虚假的负奖励噪声。
 
-#strong[改动]：@eq-rlvr-shell 的骨架一字未动，改的是坐标二、坐标三各一处，外加两处数据层补丁与一个开关。
+#strong[核心机制]：Yu et al. (2025) 提出的#strong[解耦裁剪与动态采样策略优化（DAPO）]在保持 @eq-rlvr-shell 核心结构不变的前提下，对维度二、维度三及数据采样层进行了针对性修正（同时移除了 KL 散度正则项）：
 
-1. #strong[坐标二：不对称裁剪（Clip-Higher）]。取 $epsilon_"low" = 0.2$、$epsilon_"high" = 0.28$。下界保持保守：放宽下界会把负优势 token 的概率继续压向 $0$，直接缩小采样空间。上界放宽：正优势的低概率 token 被 $1 + epsilon$ 卡住，而把低概率 token 抬起来正是探索的来源。原先固定对称的 $epsilon$ 造成的那种"分布越收越紧"，即熵坍缩，就此松开。
-2. #strong[坐标三：token 级损失]。把外层平均换成批内 token 等权：
+1. #strong[维度二改进：解耦非对称裁剪（Clip-Higher）]——将裁剪上下界解耦设置为 $epsilon_upright("low") = 0.2$ 与较大的 $epsilon_upright("high") = 0.28$。其机理在于：对于满足 $hat(A)_i > 0$ 的优势动作，若旧策略赋予某关键探索词元的概率 $q$ 很低（如 $q = 0.01$），对称上界 $1 + epsilon = 1.2$ 仅允许单步将其概率提升至 $0.012$，严重制约了低概率高价值推理分支的强化；适度放宽上界 $epsilon_upright("high")$ 可有效维持策略分布的多样性、防止熵坍缩，而保持较小的下界 $epsilon_upright("low")$ 则可避免负优势词元的概率被过快压缩至零。
+2. #strong[维度三改进：批次词元级等权归一化（Token-Level Policy Gradient Objective）]——将代理目标函数（最大化目标）的外层归一化方式由“先按每条回复长度 $|y_i|$ 平均”修改为对同一提示组内所有词元的总数做等权平均：
    $
-     L_"DAPO" (bold(theta)) = frac(1, sum_(i = 1)^G |y_i|) sum_(i = 1)^G sum_(t = 1)^(|y_i|) min(rho_(i,t) hat(A)_i, "clip"(rho_(i,t), 1 - epsilon_"low", 1 + epsilon_"high") hat(A)_i) .
+     J_upright("DAPO") (bold(theta)) = bb(E)_(x, thin {y_i}) [ frac(1, sum_(i = 1)^G |y_i|) sum_(i = 1)^G sum_(t = 1)^(|y_i|) min(rho_(i,t) (bold(theta)) hat(A)_(i,t), thin upright("clip")(rho_(i,t) (bold(theta)), 1 - epsilon_upright("low"), 1 + epsilon_upright("high")) hat(A)_(i,t)) ] .
    $ <eq-rlvr-dapo-loss>
-   GRPO 的 $1 / |y_i|$ 使短回复的每个 token 权重更大。在长链推理里，冗长而正确的回复与简短而错误的回复被同等看待时，前者的有效信号会被稀释；批内等权让权重与 token 数成正比。
-3. #strong[数据层：动态采样]。把组内全对或全错的 prompt 整组丢弃，保证每个 micro-batch 里的组都有非零方差。治的是 GRPO 的第二条代价，方式是"不进梯度就不参与"。
-4. #strong[数据层：超长奖励整形]。超过期望长度后按缓存区间线性扣分至 $-1$，并屏蔽被截断样本的损失项。
-5. #strong[开关：关掉 KL 惩罚]。理由见第 7.10.2 节。
+   在此归一化尺度下，每个词元对目标梯度的贡献权重不再受其所属序列总长度 $|y_i|$ 的反比稀释，从而保证了长链正确推理轨迹中的有效信号强度，并抑制了错误回复为逃避惩罚而盲目增加长度的倾向。
+3. #strong[数据采样层改进：动态采样（Dynamic Sampling）与超长奖励整形]——在每次收集训练批次时，在线过滤掉组内奖励全为 $1$ 或全为 $0$（即 $0 < sum_(i=1)^G R_i < G$ 不成立）的提示组并继续采样，确保进入梯度更新的每个提示组均具有非零优势方差；同时对接近或超出最大生成长度的截断样本施加平滑的区间线性惩罚或掩码屏蔽，消除截断伪影带来的奖励噪声。
 
-#strong[代价]：动态采样把已经生成的整组扔掉——同样的更新步数需要多采 3--5 倍回复，这是最直接的代价；上界放宽后单步允许的策略位移变大，需要靠 $sigma$ 归一化与下界继续约束。
+#strong[统计代价与理论性质]：动态采样虽彻底消除了零梯度组对批次更新的稀释，但丢弃已完成自回归生成的全同组样本意味着需要消耗额外 $3$--$5$ 倍的推理生成算力以填满相同规模的有效训练批次；同时，放宽裁剪上界 $epsilon_upright("high")$ 增大了单步策略分布的最大允许偏移量。
 
-=== 第三代：GSPO —— 信任域的单位从 token 换成序列
+=== 第三代：GSPO —— 从词元级似然比转向长度归一化序列似然比
 
-#strong[病灶]：@eq-rlvr-shell 的比值逐 token 定义，而这里被优化的目标是#strong[整条回复]的期望：$J(bold(theta)) = bb(E) [R(x, y)]$，重要性权重理应是序列似然比。用逐 token 的比值去裁剪，等于对一条回复施加 $|y_i|$ 个彼此独立的约束，它们的松紧由各 token 的局部漂移决定，互相不一致。这条错配在三个地方显形：
+#strong[核心问题]：在 @eq-rlvr-shell 中，奖励与优势 $hat(A)_i$ 是在#strong[整条序列级别]定义的，而重要性采样比 $rho_(i,t)$ 与裁剪算子却是在#strong[单个词元级别]独立作用的，二者在作用粒度上存在理论错配。这一粒度错配在长序列与混合专家（MoE）模型训练中引发三方面问题：
+- 序列级真实重要性采样比为各词元比率的连乘积 $product_(t=1)^(|y_i|) rho_(i,t)$，单词元裁剪无法直接约束整条序列的对数似然累积漂移；
+- 推理引擎与训练引擎在算子实现上的微小数值舍入误差，以及 MoE 模型在两次前向传播中专家路由（Expert Routing）的离散跳变，都会导致个别词元的比率 $rho_(i,t)$ 发生剧烈抖动，迫使词元级算法不得不依赖路由回放（Routing Replay）等工程措施维持稳定。
 
-- 序列似然比的方差随 $|y_i|$ 累积（@eq-importance-sampling-ratio 的连乘结构），逐 token 的裁剪管不住整体漂移；
-- 训练与推理引擎各自前向，逐 token 的数值差在长序列上累积；
-- MoE 模型的路由在两次前向之间会变，同一 token 的比值因此抖动，GRPO 必须额外开 Routing Replay 才能收敛。
-
-#strong[改动]：只换坐标二的单位。定义长度归一化的序列似然比（几何平均），并在序列级裁剪：
+#strong[核心机制]：Zheng et al. (2025) 提出的#strong[组序列策略优化（Group Sequence Policy Optimization, GSPO）]在维度二上将重要性采样比率与信任域裁剪的基本单位统一提升至#strong[序列级别]。为避免纯序列似然比连乘随长度 $|y_i|$ 发生数值下溢或方差爆炸，GSPO 定义长度归一化的几何平均序列似然比 $s_i (bold(theta))$，并直接在序列级别执行裁剪以最大化如下代理目标：
 $
-  s_i (bold(theta)) = (frac(pi_bold(theta) (y_i divides x), pi_(bold(theta)_"old") (y_i divides x)))^(1 / |y_i|) = exp(frac(1, |y_i|) sum_(t = 1)^(|y_i|) log frac(pi_bold(theta) (y_(i,t) divides x, y_(i,<t)), pi_(bold(theta)_"old") (y_(i,t) divides x, y_(i,<t)))) ,
+  s_i (bold(theta)) eq.dot (frac(pi_bold(theta) (y_i divides x), pi_(bold(theta)_upright("old")) (y_i divides x)))^(frac(1, |y_i|)) = exp(frac(1, |y_i|) sum_(t = 1)^(|y_i|) log frac(pi_bold(theta) (y_(i,t) divides x, y_(i,<t)), pi_(bold(theta)_upright("old")) (y_(i,t) divides x, y_(i,<t)))) ,
 $ <eq-rlvr-gspo-ratio>
 $
-  J_"GSPO" (bold(theta)) = bb(E) [ frac(1, G) sum_(i = 1)^G min(s_i hat(A)_i, "clip"(s_i, 1 - epsilon, 1 + epsilon) hat(A)_i) ] .
+  J_upright("GSPO") (bold(theta)) = bb(E)_(x, thin {y_i}) [ frac(1, G) sum_(i = 1)^G min(s_i (bold(theta)) hat(A)_i, thin upright("clip")(s_i (bold(theta)), 1 - epsilon, 1 + epsilon) hat(A)_i) ] ,
 $ <eq-rlvr-gspo-objective>
-优势不变，仍是 @eq-rlvr-group-adv，作为常数作用到整条回复的每个 token。
+其中序列优势 $hat(A)_i$ 仍取自组内标准化公式 @eq-rlvr-group-adv。
 
-$epsilon$ 的量级也跟着变了，这一点容易被忽略：$s_i$ 是"平均对数比"的指数，合理的信任域尺度是"整条回复的平均对数似然漂移"，不是"单个 token 的比值"。实测取值在 $3 times 10^(-4)$ 到 $4 times 10^(-4)$ 量级；若沿用 $0.2$，在这个尺度上几乎不触发裁剪，等于没有信任域。
+值得注意的是，由于 $s_i (bold(theta))$ 对全序列对数概率比进行了长度平均（即对数似然比的算术平均再取指数），其数值波动比单词元比率 $rho_(i,t)$ 小得多；因此，GSPO 的裁剪阈值 $epsilon$ 必须相应调整为与“每词元平均对数似然漂移”相匹配的量级（通常取 $3 times 10^(-4) tilde.op 4 times 10^(-4)$，若仍沿用词元级的 $0.2$ 则裁剪约束将几乎失效）。
 
 #block(breakable: false, above: 1em)[
-#strong[代价]：
+#strong[统计代价与理论性质]：
 
-1. #strong[$s_i$ 是有偏代理]：几何平均不是似然比。真实比值是 $s_i^(|y_i|)$，两者随长度拉开，目标因此不再精确等于 $J(bold(theta))$。
-2. #strong[裁剪以整条回复为单位]：$s_i$ 越界时，该回复的所有 token 一起失去这个方向的梯度，同一条回复里可用的信息 token 被一并丢掉。
-3. #strong[平均抹掉局部极端]：序列级比值把各 token 的漂移平均，个别 token 的极端漂移不再被单独约束——这正是 DCPO 要拿回来的东西。
+1. #strong[几何平均似然比的测度变换偏差]：长度归一化比率 $s_i = [pi_bold(theta)(y_i divides x) \/ pi_(bold(theta)_upright("old"))(y_i divides x)]^(1 \/ |y_i|)$ 并非严格的无偏重要性采样权重（真实序列权重为 $s_i^(|y_i|)$），它在梯度中自动引入了与序列长度成反比的缩放并改变了高阶矩，属于以有偏代理目标换取数值稳定性的折中。
+2. #strong[序列级整体截断导致的样本信息损失]：当某条长回复的整体比率 $s_i$ 超出 $[1 - epsilon, 1 + epsilon]$ 时，整条回复中的所有词元同时失去梯度信号，无法保留序列内部未越界词元的学习信息。
+3. #strong[局部极端漂移被序列平均掩盖]：由于 $log s_i$ 是全序列对数比率的均值，序列内极少数低概率词元的剧烈偏移可能被大量高置信度词元的零偏移所平均稀释，从而逃脱序列级阈值的约束。
 ]
 
-=== 第四代：DCPO —— 裁剪边界变成旧概率的函数
+=== 第四代：DCPO —— 概率自适应动态裁剪边界与跨步平滑优势估计
 
-#strong[病灶]：坐标二的边界一直是常数，而同样的比值偏移在低概率 token 上对应的概率质量变化要小得多：$q = 0.9$ 与 $q = 0.01$ 处各允许比值变动 $0.28$，概率质量的变化差两个数量级。低概率（高熵）token 恰恰是推理分支的载体，把它们压在 $1 + epsilon$ 以内，等于把探索限制在高置信区。GSPO 换成序列单位后更没有解决这一点：它整条回复一起裁。
+#strong[核心问题]：在前三代算法中，词元级裁剪边界 $[1 - epsilon_upright("low"), 1 + epsilon_upright("high")]$ 均为与旧策略概率 $q_(i,t) eq.dot pi_(bold(theta)_upright("old")) (y_(i,t) divides x, y_(i,<t))$ 无关的固定常数。然而，相同的比率偏移量在不同基础概率下对应的#strong[实际概率质量变化 $|p - q| = |rho - 1| q$] 相差悬殊：当 $q = 0.9$ 时，比率变动 $0.2$ 意味着概率质量大幅改变 $0.18$；而当 $q = 0.01$（对应高熵推理分支处的探索词元）时，比率变动 $0.28$ 仅允许概率质量微调 $0.0028$。固定常数比率边界因此对低概率探索词元施加了过分严苛的限制，而对高概率词元又相对宽松。
 
-#strong[改动]：三个坐标各动一处，@eq-rlvr-shell 的骨架仍然没动。
+#strong[核心机制]：Yang et al. (2025) 提出的#strong[动态裁剪策略优化（Dynamic Clipping Policy Optimization, DCPO）]在保留 @eq-rlvr-shell 词元级代理目标骨架的基础上，同时对全部三个核心设计维度进行了修正：
 
-1. #strong[坐标二：边界随旧概率变化]。把约束从"比值偏差"换成"概率质量加权的偏差"：$|(rho - 1) p| <= epsilon$，其中 $p = rho q$ 是新概率，$q = pi_(bold(theta)_"old") (y_t divides x, y_(<t))$ 是旧概率。代入后是关于 $rho$ 的两条二次不等式，解出
+1. #strong[维度二改进：基于旧策略概率的自适应动态裁剪边界（Dynamic Adaptive Clipping）]——不直接约束相对比率偏移 $|rho - 1| lt.eq epsilon$，而是约束由新策略概率 $p = rho q$ 加权的概率质量变动 $|(rho - 1) p| = |rho (rho - 1)| q lt.eq epsilon$。分别针对下界（$rho < 1$ 时要求 $(1 - rho) rho q lt.eq epsilon_upright("low")$）与上界（$rho > 1$ 时要求 $(rho - 1) rho q lt.eq epsilon_upright("high")$）求解关于比率 $rho$ 的一元二次不等式 $rho^2 - rho - epsilon_upright("high") \/ q lt.eq 0$ 与 $rho^2 - rho + epsilon_upright("low") \/ q gt.eq 0$，可得依赖于旧策略概率 $q$ 的闭式动态裁剪边界函数 $[b_upright("low") (q), b_upright("high") (q)]$：
    $
-     0.5 + 0.5 sqrt(max(1 - frac(4 epsilon_"low", q), 0)) <= rho <= 0.5 + 0.5 sqrt(1 + frac(4 epsilon_"high", q)) .
+     #mhl($b_upright("low") (q) eq.dot frac(1, 2) + frac(1, 2) sqrt(max(1 - frac(4 epsilon_upright("low"), q), 0))$), #h(2em) #mhlb($b_upright("high") (q) eq.dot min(frac(1, 2) + frac(1, 2) sqrt(1 + frac(4 epsilon_upright("high"), q)), thin rho_max)$) .
    $ <eq-rlvr-dcpo-bounds>
-   $q arrow.r 0$ 时上界按 $0.5 + sqrt(epsilon_"high" / q)$ 增长、下界趋于 $0.5$；$q$ 大时上下界回到 $1 - epsilon$ 与 $1 + epsilon$ 的量级。低置信尾部的更新区间被放宽，高置信区基本不动——TRPO 的信赖域本来想约束的就是#strong[概率质量]的变化，而不是比值本身。另对上下界设硬上限 $10$，防止 $q arrow.r 0$ 时约束失效。
-2. #strong[坐标一：跨步平滑的优势（SAS）]。组内标准化只用当前步的 $G$ 条回复，全对或全错时优势为零。取当前步标准化 $hat(A)_"cur"$ 与同一 prompt 历史累积标准化 $hat(A)_"tot"$ 的按步加权平均，再取绝对值较小者：
+   （其中为防止 $q arrow.r 0$ 时上界按 $O(1 \/ sqrt(q))$ 无界发散，工程上设置硬上限截断常数 $rho_max = 10$。）由 @eq-rlvr-dcpo-bounds 可见：当 $q$ 接近 $1$ 时，由一阶泰勒展开 $sqrt(1 plus.minus 4 epsilon \/ q) approx 1 plus.minus 2 epsilon$，动态边界自然退化为标准常数边界 $[1 - epsilon_upright("low"), 1 + epsilon_upright("high")]$；而当 $q arrow.r 0$ 时，上界 $b_upright("high") (q)$ 显著放宽，从而在不破坏整体信任域稳定性的前提下为低概率探索词元赋予充足的更新空间。
+2. #strong[维度一改进：跨步平滑优势估计（Smooth Advantage Standardization, SAS）]——为在不丢弃全同奖励样本组（对比 DAPO 的动态采样）的前提下缓解零梯度与单步小样本统计抖动，DCPO 对同一提示 $x$ 在第 $k$ 个训练步的当前组内标准化优势 $hat(A)_upright("cur")$ 与跨历史训练步累积的全局标准化优势 $hat(A)_upright("tot")$ 构造两组互补的步数加权平均：
    $
-     hat(S)_"cur" = frac(k - 1, k) hat(A)_"cur" + frac(1, k) hat(A)_"tot", quad hat(S)_"tot" = frac(1, k) hat(A)_"cur" + frac(k - 1, k) hat(A)_"tot" .
+     hat(S)_upright("cur") = frac(k - 1, k) hat(A)_upright("cur") + frac(1, k) hat(A)_upright("tot"), #h(2em) hat(S)_upright("tot") = frac(1, k) hat(A)_upright("cur") + frac(k - 1, k) hat(A)_upright("tot") ,
+   $
+   进而选取二者中绝对值较小者（保守最小幅值准则）作为最终传入代理目标的平滑优势估计量 $hat(A)_(i,t)^upright("SAS")$：
+   $
+     #eqbox([$ hat(A)_(i,t)^upright("SAS") eq.dot cases(
+       hat(S)_upright("cur") \, & upright("若 ") |hat(S)_upright("cur")| lt.eq |hat(S)_upright("tot")| \,,
+       hat(S)_upright("tot") \, & upright("若 ") |hat(S)_upright("cur")| > |hat(S)_upright("tot")| .
+     ) $])
    $ <eq-rlvr-sas>
-   其中 $k$ 是该 prompt 已经历的优化步数。训练前期信当前步，后期信累积分布；取绝对值较小者是保守选择，压制单步统计的抖动。组内回报全同时优势不再恒为零，信号由历史分布补上——这与 DAPO 的"丢组"是同一个病灶的两种处置。
-3. #strong[坐标三：只在回复内平均]。
+   通过引入跨步累积统计量 $hat(A)_upright("tot")$，即使当前步组内 $G$ 条回复偶然全部全对或全错（$hat(A)_upright("cur") = 0$），只要历史累积分布具有非零方差，样本仍能获得有效的非零优势信号，避免了 DAPO 丢弃整组样本所造成的采样算力浪费；同时取 $min(|hat(S)_upright("cur")|, |hat(S)_upright("tot")|)$ 有效抑制了异常单步统计值导致的梯度突变。
+3. #strong[维度三改进：回复内平均与批次级汇总（Response-Specific Normalization）]——DCPO 将待最大化的裁剪代理目标函数定义为仅在每条回复内部按长度 $|y_i|$ 平均（外层对批次内总回复数归一化，不再按总词元数加权）：
    $
-     L_"DCPO" (bold(theta)) = sum_(i = 1)^G frac(1, |y_i|) sum_(t = 1)^(|y_i|) min(rho_(i,t) hat(A)_(i,t), "clip"(rho_(i,t), b_"low" (q_(i,t)), b_"high" (q_(i,t))) hat(A)_(i,t)) ,
+     J_upright("DCPO") (bold(theta)) = bb(E)_(x, thin {y_i}) [ frac(1, G) sum_(i = 1)^G frac(1, |y_i|) sum_(t = 1)^(|y_i|) min(rho_(i,t) (bold(theta)) hat(A)_(i,t)^upright("SAS"), thin upright("clip")(rho_(i,t) (bold(theta)), b_upright("low") (q_(i,t)), b_upright("high") (q_(i,t))) hat(A)_(i,t)^upright("SAS")) ] ,
    $ <eq-rlvr-dcpo-loss>
-   其中 $b_"low"$、$b_"high"$ 取自 @eq-rlvr-dcpo-bounds。批内等权（DAPO）会让长回复在总损失里占更大份额，即使它的优势更小：一条优势 $1$、长度 $500$ 的回复与一条优势 $0.5$、长度 $1500$ 的回复，在批内等权下的贡献是 $0.25$ 对 $0.375$。标准化后的优势本身已经含了跨回复的相对关系，再乘一次长度权重就把它改掉了。
+   其中 $b_upright("low") (q_(i,t)), b_upright("high") (q_(i,t))$ 由 @eq-rlvr-dcpo-bounds 给出。其设计依据在于：组内标准化优势 $hat(A)_i$ 已经完成了同一提示下各条回复之间的相对重要度标定，若采用 DAPO 的批次词元等权（相当于给每条回复额外乘以长度权重 $|y_i|$），反而会使优势绝对值较小但篇幅冗长的回复在总梯度中占据主导地位。
 
 #block(breakable: false, above: 1em)[
-#strong[代价]：
+#strong[统计代价与理论性质]：
 
-1. 边界依赖 $q$，旧策略的逐 token 概率必须可靠——这与 GSPO 想避免的数值敏感性正好相反。
-2. $1 / sqrt(q)$ 在 $q arrow.r 0$ 时发散，必须靠上限 $10$ 兜底，上限本身是新的超参数。
-3. 三处常数（下界、上界、硬上限）都要标定，而边界随训练进程移动（$q$ 的分布整体向高置信区移动），超参的可迁移性比常数边界差。
+1. #strong[对旧策略词元概率数值精度的强依赖]：动态边界 $b_upright("low") (q), b_upright("high") (q)$ 直接以旧策略的单词元概率 $q_(i,t)$ 为自变量，在 $q_(i,t) << 1$ 时对推理与训练引擎之间的数值不一致高度敏感（恰与 GSPO 追求序列级平滑的取向相反）。
+2. #strong[奇异点截断超参数的引入]：由于 $1 \/ sqrt(q)$ 在 $q arrow.r 0$ 时发散，算法必须依赖人为设定的硬上限阈值 $rho_max$ 来维持有界性，增加了超参数耦合（$epsilon_upright("low"), epsilon_upright("high"), rho_max$）。
 ]
 
-=== 同框架下的汇总与未收敛的分歧
+=== 四代 RLVR 算法的理论对比与方法论总结
 
-@tab-rlvr-lineage 按第 7.9 节的格式把四代算法并排放置：改动一栏标出动到的坐标，代价一栏写这次改动新引入的问题。
+@tab-rlvr-lineage 在统一的裁剪代理目标框架下横向对比了 PPO（RLHF 基准）与四代 RLVR 算法的核心问题、在三个核心设计维度上的具体改进以及各自的统计代价。
 
 #figure(
-  caption: [四代 RLVR 算法在同一裁剪外壳上的改动与代价。四者共用 @eq-rlvr-shell 的骨架，差别落在优势来源（坐标一）、信任域的单位与边界（坐标二）、损失的归一化（坐标三）上；标注"数据层"的改动不在三个坐标内，它改的是进入 batch 的数据本身],
+  caption: [大语言模型四代 RLVR 策略梯度算法在统一裁剪代理目标框架（@eq-rlvr-shell）下的理论对比。各算法共享一阶似然比裁剪结构，核心差异体现在优势函数估计（维度一）、信任域比率粒度与裁剪边界函数（维度二）以及序列长度归一化尺度（维度三）],
   text(size: 8.4pt, table(
     columns: (0.6fr, 1.5fr, 1.65fr, 1.35fr),
     align: (left + horizon, left + horizon, left + horizon, left + horizon),
-    table.header([代], [病灶], [改了什么（动到的坐标）], [代价]),
+    table.header([算法], [核心问题], [核心机制与改进方案（所属设计维度）], [统计代价与理论局限]),
     table.hline(),
-    [PPO（RLHF）], [逐 token 优势依赖 Critic；价值网络通常与策略同规模，拟合误差直接进入梯度], [（基准）Critic + GAE 逐 token 估优势（@eq-pg-gae），每个 prompt 一条回复], [显存与算力翻倍；前缀只采样一次，价值误差无法靠同状态平均消掉],
+    [PPO \ （基准）], [逐词元优势依赖独立 Critic 网络；显存与算力开销翻倍，且单次前缀采样下价值拟合偏差大], [（基准方案）以 Critic 网络配合 GAE 逐词元估计优势（@eq-pg-gae），单提示采样单条回复], [训练显存与计算量高昂；长序列前缀缺乏重复采样，Critic 逼近误差直接转化为梯度偏差],
     table.hline(stroke: 0.6pt + accent),
-    [GRPO], [同上，且逐 token 的条件期望无样本可估], [坐标一：组内标准化的回报广播为该回复的常数优势（@eq-rlvr-group-adv）], [信用分配消失；同奖励组零梯度；$1 / sigma$ 与 $1 / |y_i|$ 引入难度与长度偏差],
+    [GRPO], [移除独立 Critic 后，如何在仅有末端奖励的条件下构造低方差基线], [维度一：同提示采样 $G$ 条回复，以组内标准化回报作为序列内各词元的共享优势（@eq-rlvr-group-adv）], [序列内词元级信用分配缺失；全同奖励组产生零梯度；$1 / sigma_R$ 与 $1 / |y_i|$ 引入权重偏差],
     table.hline(stroke: 0.6pt + accent),
-    [DAPO], [熵坍缩；零梯度组；长度偏差；截断样本的奖励噪声], [坐标二、三 + 数据层：非对称裁剪 $0.2$ 与 $0.28$、批内 token 等权（@eq-rlvr-dapo-loss）、动态采样、超长奖励整形；关掉 KL], [整组样本被丢弃，同更新步数需 3--5 倍生成量；单步允许的位移变大],
+    [DAPO], [固定对称上界抑制低概率词元探索（熵坍缩）；全同组稀释梯度；序列归一化扭曲长度权重], [维度二、三 + 采样层：非对称裁剪（上界放宽至 $0.28$）、批次词元等权目标（@eq-rlvr-dapo-loss）、动态过滤全同组、超长奖励整形；移除 KL 正则], [动态过滤丢弃已生成的全同组样本，相同有效更新步数需额外消耗数倍推理生成算力],
     table.hline(stroke: 0.6pt + accent),
-    [GSPO], [序列级奖励配 token 级比值：方差随长度累积，MoE 路由抖动使比值不稳], [坐标二：单位换成序列似然比（@eq-rlvr-gspo-ratio），序列级裁剪，$epsilon$ 降到 $10^(-4)$ 量级], [比值有偏；整条回复一起被裁；局部极端漂移被平均掉],
+    [GSPO], [序列级奖励与词元级似然比粒度错配；长序列方差累积且对 MoE 路由抖动敏感], [维度二：将重要性比率与裁剪单位提升为长度归一化几何平均序列似然比（@eq-rlvr-gspo-ratio、@eq-rlvr-gspo-objective），阈值降至 $10^(-4)$ 量级], [几何平均比率并非无偏测度变换；序列级整体裁剪会一并截断回复内的正常词元；局部极端漂移被平均掩盖],
     table.hline(stroke: 0.6pt + accent),
-    [DCPO], [常数边界对低概率 token 过紧；整条裁剪浪费可用 token；零梯度仍未解], [坐标一、二、三：边界写成 $q$ 的函数（@eq-rlvr-dcpo-bounds）、优势跨步平滑（@eq-rlvr-sas）、损失只在回复内平均（@eq-rlvr-dcpo-loss）], [依赖旧概率的可靠估计；$1 / sqrt(q)$ 需上限兜底；边界随训练移动，超参难迁移],
+    [DCPO], [常数比率边界对低概率探索词元的实际概率质量更新限制过严；整条裁剪与丢组浪费样本], [维度一、二、三：由旧概率 $q_(i,t)$ 导出自适应动态边界（@eq-rlvr-dcpo-bounds）、跨步平滑优势 SAS（@eq-rlvr-sas）、回复内平均目标（@eq-rlvr-dcpo-loss）], [对低概率词元的数值精度敏感；$q arrow.r 0$ 处需引入硬上限 $rho_max$ 截断；多超参数耦合],
   )),
 ) <tab-rlvr-lineage>
 
-三点结论：
+综合上述演进脉络，可得出以下三点理论结论：
 
-1. #strong[与贝尔曼方程的边界继续后退]。@tab-pg-bellman-boundary 里，策略梯度各族至少还把贝尔曼方程当作估计工具；RLVR 族把 Critic 一并去掉后，$A = q - v$ 的定义被组内基线替换，$v$ 不再被估计，贝尔曼方程连"估计工具"这层角色都不再出现。这是本章唯一一条贝尔曼方程完全不进入梯度估计的路线。
-2. #strong[坐标二从一个常数变成两个自由度]。变体一只有 $epsilon$ 一个旋钮；这条线上先后拆出了单位（token 比与序列比）与边界函数（常数与依赖旧概率），DCPO 的边界还随训练进程变化。
-3. #strong[分歧没有收敛]。比值粒度（token 级对序列级）、边界形态（常数对概率自适应）、零梯度处置（丢组对补统计量）三点上，GSPO 与 DCPO 恰好互为反例：前者认为 token 级比值是噪声源，后者认为序列级裁剪才是浪费。四代算法改变的是同一外壳上的三个坐标，而不是从一个新的目标函数一次导出——这一代仍处在"逐个修补"的阶段。
+1. #strong[贝尔曼自举在序列末端稀疏奖励场景下的完全退场]：在 @tab-pg-bellman-boundary 所列的经典 Actor-Critic 算法中，贝尔曼期望方程仍作为 Critic 估计状态价值的辅助工具；而在以 GRPO 为代表的 RLVR 算法族中，通过利用同提示下多条完整轨迹的组内经验均值直接充当状态基线 $b(x) approx v_(pi_bold(theta)) (x)$，彻底省去了对中间状态价值的时序差分自举，使策略梯度回归到无需贝尔曼递推的组内蒙特卡洛基线范式。
+2. #strong[信任域代理目标设计自由度的精细化扩展]：从经典 PPO 单一的对称裁剪常数 $epsilon$ 出发，RLVR 算法谱系在维度二上依次解耦出“上下界非对称度”（DAPO）、“比率定义的时间粒度（词元级 vs. 序列几何平均）”（GSPO）以及“依赖旧策略概率的自适应边界函数 $b(q)$”（DCPO），更精确地逼近了概率分布空间中的局部信任域约束。
+3. #strong[设计维度上的内生权衡]：在重要性比率粒度（词元级局部精细裁剪 vs. 序列级全局平滑裁剪）、零梯度组处置（在线丢弃重采 vs. 跨步历史统计平滑）以及长度归一化尺度（词元等权 vs. 回复等权）这三组核心矛盾上，GSPO 与 DCPO 分别代表了面向不同工程瓶颈（MoE 路由数值稳定性 vs. 词元级探索效率）的互补设计取向。
 
 #divider()
 
@@ -2422,7 +2466,7 @@ $epsilon$ 的量级也跟着变了，这一点容易被忽略：$s_i$ 是"平均
 
 == 贝尔曼方程结合期望估计算法导出强化学习算法的关联谱系
 <sec-rl-genealogy>
-将贝尔曼期望方程与贝尔曼最优方程、状态价值 $V$ 与动作价值 $Q$ 两类对象，以及#link(<sec-value-estimation>)[第 6 章]的三类期望估计方法（不动点迭代、蒙特卡洛样本均值、Robbins-Monro 随机近似）组合，再配合广义策略迭代（Generalized Policy Iteration, GPI）与参数化函数近似，可得到从表格型方法到深度强化学习（Deep RL）的主要算法。各估计方法结合贝尔曼期望 / 最优方程导出的状态价值与动作价值算法见 @fig-rl-genealogy，对应的更新公式见 @tab-all-value-estimators。图中最下一层是#link(<sec-policy-gradient>)[第 7 章]的旁支：它不再解贝尔曼方程，而是直接对期望回报目标求导，贝尔曼方程只以"优势定义 + Critic 的价值估计"的形式留在梯度估计里（唯一的显式例外是 SAC 的软贝尔曼方程）。
+将贝尔曼期望方程与贝尔曼最优方程、状态价值 $V$ 与动作价值 $Q$ 两类对象，以及#link(<sec-value-estimation>)[第 6 章]的三类期望估计方法（不动点迭代、蒙特卡洛样本均值、Robbins-Monro 随机近似）组合，再配合广义策略迭代（Generalized Policy Iteration, GPI）与参数化函数近似，可得到从表格型方法到深度强化学习（Deep RL）的主要算法。各估计方法结合贝尔曼期望 / 最优方程导出的状态价值与动作价值算法见 @fig-rl-genealogy，对应的更新公式见 @tab-all-value-estimators。图中最下一层是#link(<sec-policy-gradient>)[第 7 章]的策略梯度范式：它不再以贝尔曼不动点方程为最终求解对象，而是直接对期望回报性能目标求导，贝尔曼方程仅以“优势函数定义 + Critic 辅助价值估计”的形式进入梯度估计（唯一的显式结合特例是求解软贝尔曼期望方程的 SAC）。
 
 #figure(
   {
@@ -2479,16 +2523,16 @@ $epsilon$ 的量级也跟着变了，这一点容易被忽略：$s_i$ 是"平均
       edge((0, 4), (0, 5), "->", stroke: (dash: "dashed", paint: accent, thickness: 0.7pt), text(size: 6.5pt)[参数化 + 半梯度], label-side: left),
       edge((2, 4), (2, 5), "->", stroke: (dash: "dashed", paint: accent, thickness: 0.7pt), text(size: 6.5pt)[参数化 + 半梯度], label-side: right),
 
-      // 第 6 层：策略梯度旁支（不解方程，直接对期望回报目标求导）
-      node((1, 6), text(size: 7.6pt)[*策略梯度旁支*（第 7 章）：*不解贝尔曼方程* \ 求解对象是 $max_bold(theta) J(bold(theta))$ 而非 $x = cal(T) x$ \ 贝尔曼方程只作为优势定义与 Critic 的价值估计工具 \ 唯一例外：SAC 的软贝尔曼方程], fill: hl-amber-fill, stroke: 0.85pt + hl-amber-stroke, width: 66mm),
+      // 第 6 层：策略梯度范式（不解方程，直接对期望回报目标求导）
+      node((1, 6), text(size: 7.6pt)[*策略梯度范式*（第 7 章）：*不解贝尔曼方程* \ 求解对象是 $max_bold(theta) J(bold(theta))$ 而非 $x = cal(T) x$ \ 贝尔曼方程仅作为优势定义与 Critic 的价值估计工具 \ 唯一显式结合特例：SAC 的软贝尔曼方程], fill: hl-amber-fill, stroke: 0.85pt + hl-amber-stroke, width: 66mm),
       edge((0, 5), (1, 6), "<->", stroke: (dash: "dashed", paint: hl-amber-stroke, thickness: 0.7pt), text(size: 6.5pt)[同一算法 \ 两种视角], label-side: left),
       edge((2, 5), (1, 6), "<->", stroke: (dash: "dashed", paint: hl-amber-stroke, thickness: 0.7pt), text(size: 6.5pt)[同一算法 \ 两种视角], label-side: right),
     )
   },
-  caption: [强化学习算法关联谱系：左框为预测 / 评估类算法（对应贝尔曼期望方程），右框为控制类算法（对应贝尔曼最优方程或 GPI 外环）；中列三类期望估计方法分别作用于显式展开式（DP）、价值定义（MC，不经贝尔曼方程）与条件期望式（TD），最下行为函数近似延伸。右下节点按价值式控制谱系归类，DDPG / TD3 / SAC 的 Critic 求解的是（软）期望方程；最底行的策略梯度旁支改为直接对期望回报目标求导，含 Actor 的算法（A2C / PPO / DDPG / TD3 / SAC）同时属于该支],
+  caption: [强化学习算法关联谱系：左框为预测 / 评估类算法（对应贝尔曼期望方程），右框为控制类算法（对应贝尔曼最优方程或 GPI 外环）；中列三类期望估计方法分别作用于显式展开式（DP）、价值定义（MC，不经贝尔曼方程）与条件期望式（TD），最下行为函数近似延伸。右下节点按价值式控制谱系归类，DDPG / TD3 / SAC 的 Critic 求解的是（软）期望方程；最底行的策略梯度范式直接对期望回报目标求导，含 Actor 的算法（A2C / PPO / DDPG / TD3 / SAC）兼具两种视角],
 ) <fig-rl-genealogy>
 
-策略梯度旁支并没有停在 PPO：在大语言模型的 RLVR 训练中，它继续演化出 GRPO、DAPO、GSPO、DCPO 四代算法（#link(<sec-rlvr-lineage>)[第 7.10 节]）。它们把 Critic 一并去掉，贝尔曼方程不再以任何形式进入梯度估计——@tab-pg-bellman-boundary 为此单列了一行。
+策略梯度范式并未止步于 PPO：在大语言模型的可验证奖励强化学习（RLVR）训练中，该框架进一步演化出 GRPO、DAPO、GSPO 与 DCPO 四代代表性算法（#link(<sec-rlvr-lineage>)[第 7.10 节]）。这类算法完全移除了独立的 Critic 价值网络，以同提示组内相对回报充当状态基线，使贝尔曼自举方程不再进入梯度估计过程（见 @tab-pg-bellman-boundary 对应条目）。
 
 图中未列出两类状态价值算法：纯 $V$ 的蒙特卡洛控制在无模型时无法选取贪心动作（#link(<sec-mc-state-value>)[第 6.3.1 节]第 3 项）；无模型最优控制通常不对 $v_star$ 做采样自举而直接估计 $q_star$，结构原因见 @eq-max-expectation-order 及其后说明。
 
