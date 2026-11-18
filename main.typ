@@ -1354,63 +1354,495 @@ $ <eq-rm-error-recursion>
 
 == 基于蒙特卡洛（Monte Carlo）方法的价值估计（模型未知：完整轨迹采样）
 <sec-mc-estimation>
-当环境模型 $p(s', r divides s, a)$ 未知时，无法执行#link(<sec-dp-fixed-point>)[第 6.2 节]中的显式概率求和 $sum_(s', r) p(s', r divides s, a) [dot.op]$。#strong[蒙特卡洛（Monte Carlo, MC）方法]绕开一步贝尔曼递推方程，直接回到#link(<sec-value-functions>)[第 1.3 节]中价值函数的#strong[原始期望定义]（#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]）：
+当环境模型 $p(s', r divides s, a)$ 未知时，无法执行#link(<sec-dp-fixed-point>)[第 6.2 节]中的显式概率求和 $sum_(s', r) p(s', r divides s, a) [dot.op]$，即无法沿马尔可夫决策树对一步分支精确加权。#strong[蒙特卡洛（Monte Carlo, MC）方法]绕开一步贝尔曼递推方程，直接回到#link(<sec-value-functions>)[第 1.3 节]中价值函数的#strong[原始期望定义]（#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]），依据#link(<sec-mc-expectation-theory>)[第 6.1 节]的大数定律，用智能体与环境交互采集到的#strong[真实折扣回报样本均值]近似理论条件期望。
+
+从“期望值如何近似”这一视角看，所有蒙特卡洛估计算法共享同一个数学骨架——对命中特定条件事件 $C$ 的回报样本求平均；不同算法之间的演进，完全取决于在#strong[估计对象（条件事件 $C$）]、#strong[平均与更新方式]、以及#strong[样本复用、探索覆盖与分布修正]三个维度上的不同选择。本节首先建立统一估计模板与基准算法 MC Basic，随后对比状态价值与动作价值的估计机理及平均更新规则，进而按“提高样本利用率 $arrow.r$ 保证样本覆盖 $arrow.r$ 修正样本分布偏差”的递进脉络展开各核心算法。
+
+=== 总览：期望的样本近似与蒙特卡洛算法谱系
+<sec-mc-overview>
+状态价值函数 $v_pi (s)$ 与动作价值函数 $q_pi (s, a)$ 的定义仅在#strong[条件事件]（Conditioning Event）的粒度上不同：状态价值以“时刻 $t$ 处于状态 $s$”为条件，动作价值以“时刻 $t$ 处于状态 $s$ 且执行动作 $a$”为条件，被估对象均为同一折扣回报随机变量 $G_t$ 在对应条件事件下的数学期望：
 $
-  v_pi (s) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s], #h(3em) q_pi (s, a) eq.dot bb(E)_pi [#mhlg($G_t$) divides S_t = s, A_t = a] .
+  #mhlb($C_V (s)$) eq.dot {S_t = s}, quad & v_pi (s) = bb(E)_pi [#mhlg($G_t$) divides #mhlb($C_V (s)$)], \
+  #mhlb($C_Q (s, a)$) eq.dot {S_t = s, thin A_t = a}, quad & q_pi (s, a) = bb(E)_pi [#mhlg($G_t$) divides #mhlb($C_Q (s, a)$)] .
+$ <eq-mc-condition-events>
+将条件事件统一记为 $C$（取 $C_V (s)$ 或 $C_Q (s, a)$），待估真实期望记为 $z(C) eq.dot bb(E)_pi [G_t divides C]$。设截至当前交互共采集到 $N(C)$ 个命中事件 $C$ 的完整回报样本，第 $i$ 个命中样本的观测回报记为 $G_C^((i))$（$i = 1, 2, dots.h, N(C)$），则状态价值与动作价值的蒙特卡洛估计共用同一个经验样本均值模板（每获得一个新命中回报 $G_t$ 时，先令计数器 $N(C) arrow.l N(C) + 1$，再执行增量更新）：
 $
-在#strong[分幕式任务]（Episodic Tasks，每幕必在有限步 $T < oo$ 内到达终止状态）中，智能体遵循策略 $pi$ 与环境交互生成完整的一幕轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h, S_(T - 1), A_(T - 1), R_T)$。从轨迹末端 $t = T - 1$ 向起点 $t = 0$ 逆向递推 $G_t = R_(t + 1) + gamma G_(t + 1)$（初值 $G_T = 0$），即可在 $O(T)$ 时间内精确算出该幕轨迹每个时刻 $t$ 的真实观测回报 $G_t$，再应用#link(<prop-6.2>)[命题 6.2] 的蒙特卡洛样本均值估计期望。
+  #eqbox([$ hat(z)(C) eq.dot frac(1, N(C)) sum_(i = 1)^(N(C)) #mhlg($G_C^((i))$), quad arrow.r "等价增量形式" quad hat(z)(C) arrow.l hat(z)(C) + #mhl($frac(1, N(C))$) (#mhlg($G_t$) - hat(z)(C)) $])
+$ <eq-mc-generic-estimator>
 
-=== 状态价值的蒙特卡洛估计（首次访问型与每次访问型 MC 评估）
-<sec-mc-state-value>
-在同一幕轨迹 $tau$ 中，同一个状态 $s in cal(S)$ 可能在多个不同时间步被访问。根据对同一幕内重复访问样本的处理方式，状态价值的 MC 估计分为两类：
+#strong[分幕式前提与回报的逆向递推计算]：根据#link(<def-1.1>)[定义 1.1]，时刻 $t$ 的折扣回报 $G_t = R_(t + 1) + gamma R_(t + 2) + dots.h.c + gamma^(T - t - 1) R_T$ 依赖于从时刻 $t + 1$ 直至交互终止时刻 $T$ 的全部未来奖励。因此，标准蒙特卡洛方法#strong[仅适用于分幕式任务]（Episodic Tasks，即每一幕交互必在有限步 $T < oo$ 内到达终止状态 $S_T$）：智能体必须先遵循策略与环境交互完一整幕，生成完整轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h, S_(T - 1), A_(T - 1), R_T, S_T)$，才能观测到真实回报。在计算一整幕各时刻的回报时，若对每个时刻 $t$ 分别从头累加未来奖励，时间复杂度将达 $O(T^2)$；工程实现直接利用#link(<prop-1.1>)[命题 1.1] 的一步递推恒等式，从轨迹末端 $t = T - 1$ 向起点 $t = 0$ #strong[逆向递推]（初值 $G_T = 0$）：
+$
+  G_t = R_(t + 1) + gamma G_(t + 1), quad t = T - 1, thin T - 2, thin dots.h, thin 0 ,
+$
+仅需单次反向遍历即可在 $O(T)$ 时间内精确算出该幕所有时刻的真实回报 $G_t$。
 
-1. #strong[首次访问型蒙特卡洛估计（First-Visit MC Prediction）]：
-   在每一幕轨迹中，仅记录状态 $s$ #strong[第一次出现]的时刻 $t_1 (s) = min {t gt.eq 0 : S_t = s}$ 所对应的折扣回报 $G_(t_1 (s))$，忽略该幕后续对 $s$ 的重复访问。以下按访问幕依次到达的流式协议理解：设在 $M$ 幕交互中共有 $N(s)$ 幕访问过状态 $s$，记第 $i$ 个访问 $s$ 的幕中的首次访问回报为 $G_s^((i))$，则状态价值估计量为：
+#strong[命题 6.3（蒙特卡洛价值估计的一般形式与统计性质）] <prop-6.3> 设策略 $pi$ 与环境交互产生若干幕相互独立的完整轨迹，$z(C) eq.dot bb(E)_pi [G_t divides C]$ 为条件事件 $C$（取 $C_V (s)$ 或 $C_Q (s, a)$）对应的被估价值，$N(C)$ 为截至当前命中 $C$ 的样本总数（首次访问协议下每幕至多计入第一次命中的时刻，每次访问协议下计入每幕内的全部命中时刻），$hat(z)(C)$ 为 @eq-mc-generic-estimator 的估计量。则：
+1. #strong[首次访问协议下的条件无偏性与方差衰减]：在首次访问协议下，每个命中样本分别来自不同幕的独立轨迹；给定 $N(C) = n$（$n gt.eq 1$），样本序列 ${G_C^((i))}_(i = 1)^n$ 条件独立同分布，由#link(<prop-6.2>)[命题 6.2]：
    $
-     #eqbox([$ hat(V)_pi^upright("FV") (s) eq.dot #mhl($frac(1, N(s)) sum_(i = 1)^(N(s))$) #mhlg($G_s^((i))$), #h(2em) upright("增量更新：") quad V(s) arrow.l V(s) + #mhl($frac(1, N(s))$) [#mhlg($G_(t_1 (s))$) - V(s)] $])
-   $ <eq-mc-first-visit-v>
-   #strong[理论性质]：不同幕的轨迹相互独立，且每个首次访问回报满足 $bb(E)[G_(t_1 (s)) divides S_(t_1 (s)) = s] = v_pi (s)$。由于 $N(s)$ 本身是随机变量，且与回报来自同一批轨迹，无偏性与方差须在给定样本量的条件下陈述：给定 $N(s) = n$ 后，这 $n$ 个回报条件独立同分布，由#link(<prop-6.2>)[命题 6.2] 得
+     bb(E) [hat(z)(C) divides N(C) = n] = z(C), #h(2em) upright("Var")(hat(z)(C) divides N(C) = n) = frac(upright("Var")(G_t divides C), n) .
+   $ <eq-mc-conditional-unbiased>
+   （注：每次访问协议下同一幕内可产生多个命中样本，因幕内重复访问次数与同幕回报相互耦合，有限样本下有偏，不适用 @eq-mc-conditional-unbiased。）
+2. #strong[两类协议共有的一致收敛性]：无论采用首次访问还是每次访问协议，只要条件事件 $C$ 在交互过程中以概率 $1$ 被无限次命中（即 $N(C) arrow.r oo$），则由强大数定律，$hat(z)(C) arrow.r z(C)$ 以概率 $1$ 成立。
+
+#strong[注记（随机样本量与固定样本量的陈述边界）]：在按固定幕数采样的协议下，命中次数 $N(C)$ 本身是随机变量且与轨迹回报同源，故首次访问协议的无偏性须按 @eq-mc-conditional-unbiased 写为给定 $N(C) = n$ 的条件期望；若采样协议改为“持续采样直到事件 $C$ 恰好被首次访问 $n$ 次”，则样本量 $n$ 为确定性常数，无条件地有 $bb(E)[hat(z)(C)] = z(C)$ 与 $upright("Var")(hat(z)(C)) = upright("Var")(G_t divides C) \/ n$。
+
+围绕通用估计模板 @eq-mc-generic-estimator，蒙特卡洛方法族通过改变其中的三个核心要素衍生出不同算法，其设计维度与本节后续各小节的对应关系见 @tab-mc-roadmap。
+
+#figure(
+  caption: [蒙特卡洛均值近似的三个可变维度与本节演进路线],
+  text(size: 8.6pt, table(
+    columns: (28mm, 42mm, 1fr, 28mm),
+    align: (left + horizon, left + horizon, left + horizon, left + horizon),
+    table.header([可变维度], [具体可选项], [对应的近似效果与衍生算法], [对应小节]),
+    table.hline(),
+    [#strong[① 估什么] \ （条件事件 $C$）],
+    [$C_V (s) = {S_t = s}$ \ $C_Q (s, a) = {S_t = s, A_t = a}$],
+    [• 状态价值 MC 评估（仅用于评估 $v_pi$） \ • 动作价值 MC 估计（支撑无模型控制 $arg max_a Q$）],
+    [#link(<sec-mc-basic>)[MC Basic 基线] \ #link(<sec-mc-vq-comparison>)[状态值与动作值对比]],
+    [#strong[② 怎么算平均] \ （平均与加权方式）],
+    [• 批量平均 $frac(1, N) sum G^((i))$ \ • 增量平均（步长 $1 \/ N$） \ • 常步长指数平均（步长 $alpha$） \ • 重要性采样加权（OIS / WIS）],
+    [• 离线批量算术平均（MC Basic） \ • 在线等价样本均值（平稳评估） \ • 指数遗忘旧样本（非平稳控制） \ • 跨分布无偏 / 渐近无偏修正（离轨 MC）],
+    [#link(<sec-mc-averaging>)[平均与更新方式] \ #link(<sec-mc-off-policy>)[离轨与重要性采样]],
+    [#strong[③ 哪些样本进平均 \ 与怎么采样本] \ （利用率与覆盖）],
+    [• 仅起点 vs. 全后缀复用 \ • 首次访问 vs. 每次访问 \ • 批量改进 vs. 逐幕更新 \ • 试探性出发 / $epsilon$-软 / GLIE],
+    [• 从单条轨迹提取沿途全部状态-动作样本 \ • 权衡有限样本无偏性与样本利用率 \ • 衍生出 MCES、同轨 $epsilon$-贪心 MC 控制],
+    [#link(<sec-mc-sample-efficiency>)[优化一：样本利用率] \ #link(<sec-mc-action-value>)[优化二：样本覆盖]],
+  )),
+) <tab-mc-roadmap>
+
+=== 基线：MC Basic（最朴素的轨迹均值近似）
+<sec-mc-basic>
+在引入各类样本复用与在线更新技巧之前，先考察最直观、最朴素的无模型控制算法——#strong[MC Basic 算法]（赵世钰《强化学习的数学原理》第 5.1 节）。其设计思路是直接将#link(<sec-dp-state-value>)[第 6.2 节]的#strong[策略迭代（Policy Iteration）]改造为无模型版本：既然没有环境模型 $p(s', r divides s, a)$ 来精确计算动作价值 $q_(pi_k) (s, a)$，就对每一个状态-动作对 $(s, a)$ 独立采样多条轨迹，用回报的算术平均直接替换精确期望。
+
+具体而言，给定第 $k$ 轮策略 $pi_k$，MC Basic 的每一轮迭代按以下两步交替执行：
+1. #strong[策略评估（逐个状态-动作对独立批量采样）]：遍历状态-动作空间中的每一个状态-动作对 $(s, a) in cal(S) times cal(A)$，强制将每一幕的初始状态和初始动作指定为 $(S_0 = s, A_0 = a)$，从 $t = 1$ 起遵循当前策略 $pi_k$ 与环境交互直至终止，独立重复采集 $n$ 条完整轨迹，获得 $n$ 个起点回报样本 ${G_(s, a)^((1)), G_(s, a)^((2)), dots.h, G_(s, a)^((n))}$。由 @eq-mc-generic-estimator 直接求批量算术平均作为动作价值估计：
    $
-     bb(E)[hat(V)_pi^upright("FV") (s) divides N(s) = n] = v_pi (s), #h(2em) upright("Var")(hat(V)_pi^upright("FV") (s) divides N(s) = n) = upright("Var")(G_(t_1 (s)) divides N(s) = n) / n .
+     hat(Q)_(pi_k) (s, a) eq.dot frac(1, n) sum_(i = 1)^n #mhlg($G_(s, a)^((i))$), quad forall (s, a) in cal(S) times cal(A) .
+   $ <eq-mc-basic-eval>
+2. #strong[策略改进（逐状态贪心最大化）]：待所有 $(s, a)$ 的批量平均计算完毕后，无需环境模型，直接对每个状态 $s in cal(S)$ 选取估值最大的动作构造下一轮确定性贪心策略：
    $
-   若采用“持续采样直到获得 $n$ 个访问 $s$ 的幕”的固定样本量协议，则无条件地有 $bb(E)[hat(V)_pi^upright("FV") (s)] = v_pi (s)$ 与方差 $upright("Var")(G_(t_1 (s))) \/ n$；若固定总幕数 $M$ 而令 $N(s)$ 随机，则只能使用上述条件结论。若 $s$ 以概率 $1$ 被无限次访问，则 $N(s) arrow.r oo$，估计量由强大数定律以概率 $1$ 收敛于 $v_pi (s)$。
+     pi_(k + 1) (s) in #mhl($arg max_(a in cal(A))$) hat(Q)_(pi_k) (s, a), quad forall s in cal(S) .
+   $ <eq-mc-basic-improve>
 
-2. #strong[每次访问型蒙特卡洛估计（Every-Visit MC Prediction）]：
-   将所有幕中访问状态 $s$ 的#strong[全部时间步]对应的回报均纳入样本均值计算（每访问一次计数器 $N(s) arrow.l N(s) + 1$，并按 $V(S_t) arrow.l V(S_t) + frac(1, N(S_t)) [G_t - V(S_t)]$ 或常步长 $alpha$ 更新）。由于同一幕内先后两次访问 $s$ 的回报共享后续轨迹奖励，样本之间相关，每次访问估计量在有限样本下有偏；当 $N(s) arrow.r oo$ 时偏差趋于零，估计量同样以概率 $1$ 收敛于 $v_pi (s)$。Singh & Sutton (1996) 指出，样本较少时每次访问估计的均方误差常低于首次访问估计。
+#strong[MC Basic 的基线意义与三大局限]：当每个 $(s, a)$ 的采样幕数 $n arrow.r oo$ 时，由大数定律有 $hat(Q)_(pi_k) (s, a) arrow.r q_(pi_k) (s, a)$，MC Basic 在极限下严格退化为动态规划的精确策略迭代，这清晰揭示了“蒙特卡洛控制本质上是用样本均值替代策略迭代中的模型期望”。然而，作为一种朴素基线，MC Basic 暴露出三个亟待解决的问题，构成了本节后续全部演进的出发点：
+- #strong[问题一（估计对象的选择）]：动态规划的策略迭代评估的是状态价值 $v_(pi_k) (s)$，为何 MC Basic 必须改为估计动作价值 $q_(pi_k) (s, a)$？若只评估状态价值会产生什么差异？（见#link(<sec-mc-vq-comparison>)[下一小节：状态价值与动作价值的对比]）
+- #strong[问题二（平均与更新的时机）]：@eq-mc-basic-eval 必须先将 $n$ 个样本全部存入内存、等整批采完才能求平均，能否每采完一条样本就以 $O(1)$ 内存实时更新均值？（见#link(<sec-mc-averaging>)[平均方式：批量、增量与常步长]）
+- #strong[问题三（样本利用率极低与起点假设严苛）]：一条长度为 $T$ 的轨迹明明依次经过了 $T$ 个状态-动作对，MC Basic 却只用整条轨迹的总回报 $G_0$ 更新唯一起点 $(S_0, A_0)$，将中间时刻 $t = 1, dots.h, T - 1$ 的信息全部丢弃；同时它还要求每个 $(s, a)$ 都能被人为指定为初始起点并等 $n$ 幕全部采完才改进一次策略。如何充分利用轨迹中间样本、实时改进策略并去掉严苛的起点假设？（见#link(<sec-mc-sample-efficiency>)[优化一]至#link(<sec-mc-off-policy>)[优化三]）
 
-3. #strong[关键局限：为何无模型控制不能仅估计状态价值 $V(s)$？]
-   在环境模型 $p(s', r divides s, a)$ 已知时，拥有状态价值 $v_pi (s)$ 即可通过 @eq-policy-improvement 的单步向前看（One-step Lookahead）选出贪心动作；但在#strong[无模型设定]下，因 $p(s', r divides s, a)$ 未知，即使精确估出 $V(s) = v_pi (s)$，智能体也无法计算 $arg max_a bb(E)[R_(t + 1) + gamma V(S_(t + 1)) divides S_t = s, A_t = a]$。因此，无模型策略控制#strong[必须直接估计动作价值 $Q(s, a)$]，从而免模型地通过 $arg max_a Q(s, a)$ 直接选取最优动作。
+=== 估计对象：状态价值与动作价值（统一描述与核心差异）
+<sec-mc-vq-comparison>
+按 @eq-mc-condition-events 与#link(<prop-6.3>)[命题 6.3] 的统一模板，状态价值 $v_pi (s)$ 与动作价值 $q_pi (s, a)$ 的蒙特卡洛估计在数学结构上完全同构：两者都对完整轨迹的折扣回报 $G_t$ 求样本均值，收敛性定理与 $O(1 \/ n)$ 的方差衰减形式完全一致。然而，仅仅因为条件事件从 $C_V (s) = {S_t = s}$ 细化为 $C_Q (s, a) = {S_t = s, thin A_t = a}$（多固定了一个动作变量 $A_t = a$），两者在#strong[底层统计机理]与#strong[上层算法后果]上产生了系统性差异，汇总见 @tab-mc-vq-comparison。
 
-=== 动作价值的蒙特卡洛估计与策略控制（MCES、$epsilon$-贪心与重要性采样）
-<sec-mc-action-value>
-1. #strong[动作价值的蒙特卡洛增量估计（估计 $q_pi (s, a)$）]：
-   将统计对象从状态 $s$ 细化为状态-动作对 $(s, a) in cal(S) times cal(A)$。当轨迹在时刻 $t$ 经历 $(S_t = s, A_t = a)$（首次访问或每次访问）并观测到完整回报 $G_t$ 时，计数器 $N(s, a) arrow.l N(s, a) + 1$，更新公式为（在策略控制中常取衰减步长 $alpha_k = 1 \/ N(s, a)$ 或常步长 $alpha$）：
+==== 一、底层统计机理差异（样本获取、计数关系与方差分解）
+
+1. #strong[样本获取条件与计数切分关系]：
+   估计 $v_pi (s)$ 的样本只需轨迹在时刻 $t$ 到达状态 $s$ 即可获得；而估计 $q_pi (s, a)$ 的样本只有在智能体到达状态 $s$ 且#strong[实际执行了动作 $a$] 时才能观测到，未被执行的动作 $a' eq.not A_t$ 始终没有样本。
+   在#strong[每次访问计数]协议下，由于状态 $s$ 的每一次访问都唯一对应当时执行的一个动作 $a in cal(A)$，状态访问次数 $N(s)$ 恰好等于该状态下各动作访问次数 $N(s, a)$ 的边缘和：
+   $
+     N(s) = sum_(a in cal(A)) N(s, a), #h(2.5em) N(s) gt.eq N(s, a) quad #[（对任意 $a in cal(A)$）] .
+   $ <eq-mc-visit-count>
+   上式右端不等式取等号当且仅当在状态 $s$ 处所有访问均执行了同一个动作。（注：在#strong[首次访问计数]协议下，$N(s)$ 与 $N(s, a)$ 均按幕计数，同一幕内可能先后访问 $(s, a_1)$ 与 $(s, a_2)$，此时总有 $N(s) gt.eq N(s, a)$，但各动作计数之和满足 $sum_(a in cal(A)) N(s, a) gt.eq N(s)$，不再严格相等。）@eq-mc-visit-count 表明：同一条轨迹算出的回报 $G_t$ 可同时为 $V(S_t)$ 与 $Q(S_t, A_t)$ 提供样本，估计动作价值#strong[不增加环境交互成本]，但会将状态 $s$ 处的总样本量按各动作被选中的频率切分为 $|cal(A)|$ 份。
+
+2. #strong[单样本方差的降低与估计量方差的放大]：
+   由#link(<def-1.2>)[定义 1.2] 与#link(<def-1.3>)[定义 1.3]，$v_pi (s)$ 的回报样本包含第一步动作选择 $A_t tilde.op pi(dot.op divides s)$ 的随机性，而 $q_pi (s, a)$ 的样本已将该动作固定为 $a$。对给定 $S_t = s$ 的回报应用概率论中的#strong[全方差公式]（$upright("Var")(X) = bb(E)[upright("Var")(X divides Y)] + upright("Var")(bb(E)[X divides Y])$），并代入 $bb(E)[G_t divides S_t = s, A_t] = q_pi (s, A_t)$，可将第一步动作的随机性显式分离：
+   $
+     upright("Var")(G_t divides S_t = s) = bb(E)_(A_t) [upright("Var")(G_t divides S_t = s, A_t) divides S_t = s] + #mhlg($upright("Var")_(A_t) (q_pi (s, A_t) divides S_t = s)$) .
+   $ <eq-mc-total-variance>
+   右端第一项是“固定动作后后续环境转移与策略随机性”带来的平均条件方差，第二项是“同一状态下不同动作本身价值不同”带来的方差。按动作条件化消去了第二项非负方差，因此在策略加权平均意义下，动作价值单样本回报的条件方差不大于状态价值单样本的方差：
+   $
+     bb(E)_(A_t) [upright("Var")(G_t divides s, A_t)] = upright("Var")(G_t divides s) - upright("Var")_(A_t)(q_pi (s, A_t)) lt.eq upright("Var")(G_t divides s) .
+   $ <eq-mc-var-conditioning>
+   然而，在实际估计中，动作价值估计量 $hat(Q)_pi (s, a)$ 的方差#strong[通常反而高于]状态价值估计量 $hat(V)_pi (s)$，原因在于分母上的有效样本量被大幅稀释。在同轨采样下，状态 $s$ 处动作 $a$ 被选中的概率为 $pi(a divides s)$，故 $N(s, a)$ 的期望约为 $pi(a divides s) N(s)$；代入 @eq-mc-conditional-unbiased 的方差公式可得：
+   $
+     upright("Var")(hat(Q)_pi (s, a)) approx frac(upright("Var")(G_t divides s, a), #mhl($pi(a divides s)$) N(s)), #h(3em) upright("Var")(hat(V)_pi (s)) = frac(upright("Var")(G_t divides s), N(s)) .
+   $ <eq-mc-variance-comparison>
+   当某个动作被执行的概率 $pi(a divides s)$ 很小时，其估计方差会被因子 $frac(1, pi(a divides s))$ 成倍放大。这就是“探索不足时非贪心动作的 $Q$ 值估计极不可靠”的统计学根源。
+
+==== 二、算法与工程后果（控制能力、访问覆盖、离轨修正与存储）
+
+1. #strong[能否支撑无模型策略控制（聚合方向的不对称性）]：
+   两类价值函数之间满足确定的单向聚合关系：
+   $
+     v_pi (s) = sum_(a in cal(A)) pi(a divides s) q_pi (s, a) quad #[（#link(<thm-3.1>)[定理 3.1]）], #h(3.5em) v_star (s) = max_(a in cal(A)) q_star (s, a) quad #[（#link(<thm-5.1>)[定理 5.1]）] .
+   $ <eq-mc-vq-aggregation>
+   由动作价值 $Q$ 聚合出状态价值 $V$（或直接选出最优动作 $arg max_a Q(s, a)$）只需在已知的动作集合上做策略加权或求最大值，#strong[完全不需要环境模型]。反之，若只估出了状态价值 $V(s) approx v_pi (s)$，想要改进策略就必须执行 @eq-policy-improvement 的单步向前看（One-step Lookahead）：
+   $
+     pi'(s) in arg max_(a in cal(A)) sum_(s' in cal(S), thin r in cal(R)) #mhlb($p(s', r divides s, a)$) [r + gamma V(s')] ,
+   $
+   这要求显式已知环境转移概率 $p(s', r divides s, a)$。因此得出无模型强化学习的一条核心准则：#strong[无模型策略控制必须估计动作价值 $Q(s, a)$；状态价值的蒙特卡洛估计仅适用于策略评估（Prediction）]。
+
+2. #strong[充分探索与访问覆盖要求（Continual Exploration）]：
+   #link(<prop-6.3>)[命题 6.3] 要求被估条件事件被无限次命中。若仅评估状态价值 $v_pi (s)$，即使被评估策略 $pi$ 是完全确定性的，只要状态 $s$ 在该策略诱导的马尔可夫链中常返，就能不断获得样本；但若要估计动作价值 $q_pi (s, a)$ 并用于控制，则要求#strong[每一个状态-动作对 $(s, a)$ 都被持续访问]。在确定性策略下，每个状态只有一个动作被执行，其余 $|cal(A)| - 1$ 个动作的样本数恒为 $0$，从而迫使动作价值控制算法必须额外引入探索机制（见#link(<sec-mc-action-value>)[优化二]）。
+
+3. #strong[离轨学习时重要性采样比的起点差异]：
+   当使用行为策略 $b$ 采集轨迹来估计目标策略 $pi$ 的价值时（详见#link(<sec-mc-off-policy>)[优化三]），条件事件是否固定当前动作 $A_t$，直接决定了重要性采样比连乘的起始时刻：
+   $
+     rho_(t : T - 1) = product_(k = t)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k)) quad #[（用于 $v_pi (s)$）], #h(2.5em) rho_(t + 1 : T - 1) = product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k)) quad #[（用于 $q_pi (s, a)$）] .
+   $ <eq-mc-is-start-comparison>
+   估计 $q_pi (s, a)$ 时，时刻 $t$ 的动作 $A_t = a$ 已作为条件给定，无需修正时刻 $t$ 的选动作概率，故连乘从下一步 $k = t + 1$ 开始；估计 $v_pi (s)$ 时，时刻 $t$ 的动作 $A_t$ 仍由行为策略 $b$ 随机采样，必须补上 $k = t$ 的概率比因子 $frac(pi(A_t divides S_t), b(A_t divides S_t))$。需要注意的是，若轨迹来自其他策略 $b eq.not pi$，无论估计 $v_pi$ 还是 $q_pi$ 都必须进行重要性采样修正；若直接对 $b$ 采样的回报求平均，得到的只能是行为策略自身的价值 $v_b (s)$ 或 $q_b (s, a)$。
+
+4. #strong[存储空间开销]：
+   表格型状态价值估计只需维护 $|cal(S)|$ 个表项，而动作价值估计需要维护 $|cal(S)| times |cal(A)|$ 个表项，内存与遍历开销随动作空间大小线性增长。
+
+#figure(
+  caption: [状态价值与动作价值的蒙特卡洛估计全方位对比],
+  text(size: 8.6pt, table(
+    columns: (26mm, 1fr, 1fr),
+    align: (left + horizon, left + horizon, left + horizon),
+    table.header([对比维度], [状态价值 MC 估计（$v_pi (s)$）], [动作价值 MC 估计（$q_pi (s, a)$）]),
+    table.hline(),
+    [条件事件 $C$], [$C_V (s) = {S_t = s}$], [$C_Q (s, a) = {S_t = s, thin A_t = a}$],
+    [样本获取前提], [轨迹访问状态 $s$ 即可], [轨迹访问状态 $s$ #strong[且实际执行动作 $a$]],
+    [样本计数关系], [$N(s)$], [$N(s, a)$；每次访问计数下 $N(s) = sum_a N(s, a)$，首次访问下 $N(s) gt.eq N(s, a)$],
+    [单样本条件方差], [$upright("Var")(G_t divides s)$，含当前步选动作随机性], [$upright("Var")(G_t divides s, a)$，已消去当前步选动作随机性],
+    [估计量方差], [$frac(upright("Var")(G_t divides s), N(s))$], [$approx frac(upright("Var")(G_t divides s, a), pi(a divides s) N(s))$，低概率动作方差被 $1 \/ pi(a divides s)$ 放大],
+    [访问覆盖要求], [状态 $s$ 被无限次访问], [每个状态-动作对 $(s, a)$ 均被无限次访问（需探索机制）],
+    [离轨重要性采样比], [$rho_(t : T - 1) = product_(k = t)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$], [$rho_(t + 1 : T - 1) = product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$],
+    [无模型策略控制], [不支持（需环境模型 $p$ 做一步向前看）], [直接支持（逐状态取 $arg max_a Q(s, a)$）],
+    [表格存储开销], [$O(|cal(S)|)$], [$O(|cal(S)| times |cal(A)|)$],
+  )),
+) <tab-mc-vq-comparison>
+
+=== 平均方式：批量平均、增量更新与常步长指数加权
+<sec-mc-averaging>
+确定了估计对象 $C$ 后，第二个核心问题是：当回报样本 $G_C^((1)), G_C^((2)), dots.h, G_C^((N))$ 陆续到达时，应当如何计算并更新均值估计量 $hat(z)_N$？根据计算时机与步长选取的不同，共有三种平均方式（对比见 @tab-mc-averaging-methods）：
+
+1. #strong[批量算术平均（Batch Mean，直接批量更新）]：
+   将截至当前采集到的全部 $N$ 个回报样本存储在列表 $"Returns"(C)$ 中，待需要读取估值时一次性求和除以 $N$：
+   $
+     hat(z)_N (C) = frac(1, N) sum_(i = 1)^N G_C^((i)) .
+   $
+   MC Basic（@eq-mc-basic-eval）采用的正是这种批量方式。其缺点在于内存占用随采样次数 $O(N)$ 线性增长，且在批量集齐前无法实时改善价值估计。
+
+2. #strong[增量式样本平均（Incremental Mean，衰减步长 $alpha_N = 1 \/ N$）]：
+   由#link(<prop-6.2>)[命题 6.2] 的增量恒等式（@eq-incremental-mean），第 $N$ 个样本到达后的算术平均值 $hat(z)_N$ 可以直接由上一次的均值 $hat(z)_(N - 1)$ 与新样本 $G_C^((N))$ 递推算出：
+   $
+     hat(z)_N (C) = hat(z)_(N - 1) (C) + #mhl($frac(1, N)$) [#mhlg($G_C^((N))$) - hat(z)_(N - 1) (C)] .
+   $ <eq-mc-incremental-1n>
+   理解 @eq-mc-incremental-1n 的关键在于：#strong[取步长 $alpha_N = 1 \/ N$ 的增量更新并非近似，它在代数上与存储全部历史样本的批量算术平均完全等价]，但将每个状态（或状态-动作对）的空间复杂度降为 $O(1)$（仅需维护当前估值 $hat(z)$ 与计数器 $N$）。
+   从#link(<sec-robbins-monro-theory>)[第 6.1 节]的 Robbins–Monro 随机近似定理（#link(<thm-6.1>)[定理 6.1]）来看，括号内的误差项 $G_C^((N)) - hat(z)_(N - 1) (C)$ 是“目标回报减当前估计”的更新方向，而调和步长序列 $alpha_N = 1 \/ N$ 同时满足 $sum_(N = 1)^oo frac(1, N) = oo$（累积步幅无穷大，足以完全消除任意初值偏差 $hat(z)_0$）与 $sum_(N = 1)^oo frac(1, N^2) = frac(pi^2, 6) < oo$（步长平方和收敛，足以在后期完全抑制单次采样噪声），因此在策略固定（平稳分布）时保证以概率 $1$ 收敛于真实价值。
+
+3. #strong[常步长指数移动平均（Constant-Step-Size EMA，固定步长 $alpha in (0, 1]$）]：
+   在边评估边改进策略的蒙特卡洛控制过程中，策略 $pi$ 随每一幕不断演进，导致回报 $G_t$ 的真实概率分布随时间持续漂移（即#strong[非平稳环境，Non-stationary Problem]）。此时若继续使用 $alpha_N = 1 \/ N$，几千幕前由劣质初始策略产生的过时回报仍与最新回报享有完全相等的权重 $1 \/ N$，导致估值响应迟钝。工程上因此常将 $1 \/ N$ 替换为固定常数步长 $alpha in (0, 1]$：
+   $
+     #eqbox([$ hat(z)_N (C) = hat(z)_(N - 1) (C) + #mhl($alpha$) [#mhlg($G_C^((N))$) - hat(z)_(N - 1) (C)] = #mhlb($(1 - alpha)^N$) hat(z)_0 (C) + sum_(i = 1)^N #mhl($alpha (1 - alpha)^(N - i)$) G_C^((i)) $])
+   $ <eq-mc-constant-alpha>
+   如右端展开式所示，常步长更新不再等价于等权算术平均，而是#strong[指数加权移动平均]：距离当前越久远的历史样本 $G_C^((i))$，其权重 $alpha (1 - alpha)^(N - i)$ 呈指数级衰减，从而能够快速遗忘过时策略的旧样本、实时追踪当前最新策略的价值。其代价是常数步长满足 $sum_(N = 1)^oo alpha = oo$ 却#strong[不满足 Robbins–Monro 第二条件 $sum_(N = 1)^oo alpha^2 < oo$]，因此估值不会严格收敛到某个固定点，而是在真值附近保持幅度与 $alpha$ 成正比的小幅随机波动。
+
+#figure(
+  caption: [蒙特卡洛期望估计的三种平均与更新方式对比],
+  text(size: 8.6pt, table(
+    columns: (28mm, 44mm, 18mm, 24mm, 26mm, 1fr),
+    align: (left + horizon, left + horizon, center + horizon, center + horizon, left + horizon, left + horizon),
+    table.header([平均方式], [更新公式], [单表项空间], [等价于算术平均], [RM 收敛条件], [适用场景]),
+    table.hline(),
+    [#strong[批量算术平均] \ （Batch Mean）],
+    [$hat(z)_N = frac(1, N) sum_(i = 1)^N G^((i))$],
+    [$O(N)$],
+    [是（定义本身）],
+    [大数定律保证 \ $N arrow.r oo$ 收敛],
+    [小样本离线统计、MC Basic 教学基线],
+    [#strong[增量样本平均] \ （步长 $1 \/ N$）],
+    [$hat(z)_N = hat(z)_(N - 1) + frac(1, N)(G^((N)) - hat(z)_(N - 1))$],
+    [$O(1)$],
+    [#strong[严格代数等价] \ （权重均为 $1 \/ N$）],
+    [$sum 1 \/ N = oo$ ✓ \ $sum 1 \/ N^2 < oo$ ✓],
+    [固定策略评估（平稳分布）、GLIE 理论收敛证明],
+    [#strong[常步长更新] \ （步长 $alpha in (0, 1]$）],
+    [$hat(z)_N = hat(z)_(N - 1) + alpha (G^((N)) - hat(z)_(N - 1))$],
+    [$O(1)$],
+    [否（指数移动平均，近大远小）],
+    [$sum alpha = oo$ ✓ \ $sum alpha^2 = oo$ ✗],
+    [策略不断变化的控制过程、非平稳环境追踪],
+  )),
+) <tab-mc-averaging-methods>
+
+增量更新（@eq-mc-incremental-1n 与 @eq-mc-constant-alpha）无需等待批量样本集齐，每观测到一个回报即可原地更新估值，这为下一小节的“逐幕在线更新”以及离轨学习中的“加权重要性采样增量算法”奠定了基础。
+
+=== 优化一：提高样本利用率（全后缀复用、每次访问与逐幕更新）
+<sec-mc-sample-efficiency>
+对比#link(<sec-mc-basic>)[MC Basic 基线]每次只用一条轨迹更新起点 $(S_0, A_0)$ 且等 $n$ 幕采完才改进策略的低效做法，现代蒙特卡洛算法从四个递进层面挖掘轨迹数据，显著提升了样本利用率（汇总见 @tab-mc-sample-reuse）：
+
+1. #strong[轨迹全后缀复用（All-Suffix Trajectory Reuse）]：
+   由马尔可夫性，一条完整轨迹 $tau = (S_0, A_0, R_1, S_1, A_1, R_2, dots.h, S_(T - 1), A_(T - 1), R_T, S_T)$ 中从任意中间时刻 $t$（$0 lt.eq t lt.eq T - 1$）截取的后缀子轨迹 $tau_(t : T) = (S_t, A_t, R_(t + 1), dots.h, S_T)$，都可以直接看作一条从状态 $S_t$（或状态-动作对 $(S_t, A_t)$）出发的合法轨迹样本。配合 $O(T)$ 的逆向递推 $G_t = R_(t + 1) + gamma G_(t + 1)$，#strong[采样一幕长度为 $T$ 的轨迹即可同时产出 $T$ 个时刻的回报样本]，一次性更新沿途经过的全部状态或状态-动作对，无需像 MC Basic 那样为每个 $(s, a)$ 单独重启采样。
+
+2. #strong[同幕内重复访问样本的复用：首次访问（First-Visit）vs. 每次访问（Every-Visit）]：
+   在启用全后缀复用后，同一幕轨迹可能在多个不同时间步 $t_1 < t_2 < dots.h$ 重复经过同一个状态 $s$（或同一个 $(s, a)$）。以状态价值评估为例，根据是否复用同一幕内的后续重复访问样本，分为两类经典协议（对比见 @tab-mc-fv-vs-ev）：
+   - #strong[首次访问型蒙特卡洛（First-Visit MC）]：在每一幕轨迹中，仅采纳状态 $s$ #strong[第一次出现]的时刻 $t_1 (s) = min {t gt.eq 0 : S_t = s}$ 对应的回报 $G_(t_1 (s))$，忽略该幕内后续对 $s$ 的重复访问。设共有 $N(s)$ 幕访问过 $s$，第 $i$ 幕的首次访问回报为 $G_s^((i))$，其批量与增量更新式为（每当新一幕首次访问 $s$ 时，先令 $N(s) arrow.l N(s) + 1$）：
+     $
+       #eqbox([$ hat(V)_pi^upright("FV") (s) eq.dot #mhl($frac(1, N(s)) sum_(i = 1)^(N(s))$) #mhlg($G_s^((i))$), #h(2em) upright("增量更新：") quad V(s) arrow.l V(s) + #mhl($frac(1, N(s))$) [#mhlg($G_(t_1 (s))$) - V(s)] $])
+     $ <eq-mc-first-visit-v>
+     由于每幕至多贡献一个样本，不同样本严格来自不同幕的独立轨迹，满足#link(<prop-6.3>)[命题 6.3] 第 1 条的条件独立同分布前提，#strong[在有限样本下条件无偏]。
+   - #strong[每次访问型蒙特卡洛（Every-Visit MC）]：将每一幕中访问状态 $s$ 的#strong[全部时间步]的回报都纳入平均（逆向遍历轨迹时无需检查 $S_t$ 在本幕前序时刻是否出现过，每遇到一次 $S_t$ 即令 $N(S_t) arrow.l N(S_t) + 1$ 并执行增量更新）。
+     #strong[为什么每次访问型在有限样本下有偏却渐近一致？] 虽然单看任意一次命中时刻都有 $bb(E)[G_t divides S_t = s] = v_pi (s)$，但在同一幕内，状态 $s$ 被重复访问的次数本身是随机变量，且与该幕的轨迹长度及累计奖励相互耦合（例如在每步奖励为负的迷宫中，反复绕圈多次经过 $s$ 的那一幕往往总回报更差，却在分子和分母中占据了更多权重），同时同一幕内先后两次访问的回报共享其后的轨迹奖励而彼此相关。这导致分母含随机总访问次数的比率估计量在有限幕下有偏（$bb(E)[hat(V)_pi^upright("EV") (s)] eq.not v_pi (s)$）。然而，由于不同幕之间依然相互独立，当采样幕数趋于无穷（$N(s) arrow.r oo$）时，跨幕大数定律使该偏差以 $O(1 \/ N(s))$ 速率衰减至 $0$，估计量同样以概率 $1$ 收敛于 $v_pi (s)$。Singh & Sutton (1996) 进一步证明，在样本幕数较少时，每次访问型因利用了更多样本，其均方误差（MSE）往往低于首次访问型，且算法实现更简洁（免去了幕内去重判断）。
+
+#figure(
+  caption: [首次访问型 MC（First-Visit）与每次访问型 MC（Every-Visit）的对比],
+  text(size: 8.6pt, table(
+    columns: (26mm, 1fr, 1fr),
+    align: (left + horizon, left + horizon, left + horizon),
+    table.header([对比维度], [首次访问型 MC（First-Visit MC）], [每次访问型 MC（Every-Visit MC）]),
+    table.hline(),
+    [样本采纳规则], [每幕轨迹中每个 $s$（或 $(s, a)$）#strong[仅计入第一次出现]的时刻 $t_1$], [每幕轨迹中每个 $s$（或 $(s, a)$）#strong[出现的所有时刻]全部计入],
+    [样本独立性], [各样本来自不同幕，给定样本数下严格条件独立同分布], [跨幕独立，但同一幕内的多次命中样本共享后续奖励、彼此相关],
+    [有限样本偏差], [#strong[条件无偏]：$bb(E)[hat(z)^upright("FV")(C) divides N(C) = n] = z(C)$], [#strong[有偏]（幕内随机访问次数与回报耦合），偏差随幕数以 $O(1 \/ N)$ 衰减],
+    [渐近一致性], [$N(C) arrow.r oo$ 时以概率 $1$ 收敛于真值 $z(C)$], [$N(C) arrow.r oo$ 时以概率 $1$ 收敛于真值 $z(C)$（渐近无偏）],
+    [实现与适用性], [需在逆向遍历时额外检查 $S_t$ 是否仍在前缀 $S_(0 : t - 1)$ 中], [无需去重判断，代码极简，小样本下均方误差常更低，自然对接函数近似与资格迹],
+  )),
+) <tab-mc-fv-vs-ev>
+
+3. #strong[逐幕在线更新与广义策略迭代（Episode-by-Episode GPI）]：
+   在 MC Basic 中，策略评估必须等待每个 $(s, a)$ 采满 $n$ 幕轨迹后才执行一次策略改进。结合#link(<sec-mc-averaging>)[上一小节]的增量更新公式（@eq-mc-incremental-1n 或 @eq-mc-constant-alpha），可将评估步截断为#strong[仅采样一幕轨迹]：每当一幕交互结束，立即逆向递推算出各步回报 $G_t$，对本幕经历的每个 $(S_t, A_t)$ 按增量公式更新动作价值估计（步长 $alpha$ 取 $1 \/ N(S_t, A_t)$ 或常数）：
    $
      #eqbox([$ Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($alpha$) [#mhlg($G_t$) - Q(S_t, A_t)] $])
    $ <eq-mc-q-update>
+   并紧接着对本幕访问过的状态 $S_t$ 立即执行策略改进（如更新为关于最新 $Q(S_t, dot.op)$ 的贪心或软贪心策略）。这种“每采完一幕即交替执行一次增量评估与一次策略改进”的架构，正是#strong[蒙特卡洛广义策略迭代（MC Control via GPI）]的标准范式：下一幕采样立即受益于上一幕改进后的新策略，大幅加速了向最优策略推进的过程。
 
-2. #strong[探索性困境与同轨策略蒙特卡洛控制（MCES 与 On-Policy $epsilon$-Greedy MC Control）]：
-   若策略 $pi$ 是确定性策略，则在状态 $s$ 下智能体永远只会执行单一动作 $a = pi(s)$，其余动作 $a' eq.not pi(s)$ 永远无法被采样，$Q(s, a')$ 的估计将停滞在初值。为保证所有状态-动作对 $(s, a)$ 均被无限次访问（持续探索，Continual Exploration），有两类经典解法：
-   - #strong[探索性出发蒙特卡洛（MC with Exploring Starts, MCES）]：假设每一幕的初始状态-动作对 $(S_0, A_0)$ 在 $cal(S) times cal(A)$ 上的每个取值均以正概率被选中，此后遵循确定性贪心策略 $pi(s) in arg max_a Q(s, a)$，每幕结束后按 @eq-mc-q-update 更新 $Q$ 并重新贪心化。MCES 收敛到 $q_star$ 在一般情形下尚无完整证明（Sutton & Barto 第 2 版第 5.3 节将其列为开放问题）。
-   - #strong[同轨策略 $epsilon$-贪心蒙特卡洛控制（On-Policy $epsilon$-Greedy MC Control）]：取消不切实际的探索性出发假设，令策略 $pi$ 为软性（$epsilon$-soft）策略：以 $1 - epsilon$ 概率选择当前贪心动作 $a^star = arg max_(a') Q(s, a')$，以 $epsilon$ 概率在全部 $|cal(A)|$ 个动作中均匀随机探索：
+4. #strong[$V$ 与 $Q$ 协同更新及跨策略历史样本复用]：
+   同一幕轨迹算出的回报序列 ${G_t}$ 可以零额外采样成本地同时更新状态价值表 $V(S_t)$ 与动作价值表 $Q(S_t, A_t)$；在已知策略分布 $pi(a divides s)$ 且各动作估值较准时，利用全期望关系 $V(s) = sum_a pi(a divides s) Q(s, a)$ 由 $Q$ 直接合成 $V$，还可消除单步动作采样的随机方差。更进一步，若将其他策略或历史日志生成的轨迹通过重要性采样（见#link(<sec-mc-off-policy>)[优化三]）加以修正，甚至可以跨策略复用离线历史数据。
+
+#figure(
+  caption: [蒙特卡洛方法提高样本利用率的五种递进手段（以 MC Basic 为参照基线）],
+  text(size: 8.6pt, table(
+    columns: (28mm, 44mm, 1fr, 34mm),
+    align: (left + horizon, left + horizon, left + horizon, left + horizon),
+    table.header([优化手段], [相比基线额外复用的信息], [核心收益与付出的统计/工程代价], [代表算法]),
+    table.hline(),
+    [#strong[① 全后缀复用]],
+    [单条轨迹中全部中间时刻 $t = 0, dots.h, T - 1$ 的后缀子轨迹],
+    [采一幕得 $T$ 个样本，免去按每个 $(s, a)$ 单独重启；代价是需保证轨迹能覆盖所有 $(s, a)$],
+    [所有现代 MC 评估与控制算法],
+    [#strong[② 每次访问协议] \ （Every-Visit）],
+    [同一幕内对同一 $s$ 或 $(s, a)$ 的第 $2, 3, dots.h$ 次重复访问],
+    [样本量更大、免去幕内去重判断、小样本 MSE 常更低；代价是同幕样本相关且有限幕下有偏],
+    [每次访问型 MC 评估与控制],
+    [#strong[③ 逐幕增量更新] \ （Episode-by-Episode）],
+    [无需等 $n$ 幕集齐，每幕结束立刻更新 $Q$ 并改进策略 $pi$],
+    [新策略立刻用于下一幕采样，学习速率显著提升；代价是回报分布随策略漂移（非平稳）],
+    [MCES、同轨 $epsilon$-贪心 MC 控制],
+    [#strong[④ $V$ 与 $Q$ 互推]],
+    [同一批轨迹同时更新 $V, Q$，或用 $sum_a pi(a divides s) Q(s, a)$ 算 $V$],
+    [消除当前步动作采样方差；代价是需要动作价值 $Q(s, a)$ 的充分探索覆盖],
+    [优势函数估计、Expected SARSA 思想前身],
+    [#strong[⑤ 跨策略数据复用]],
+    [行为策略 $b$ 或历史离线日志采集的轨迹],
+    [可复用历史数据并解耦探索与优化；代价是需乘重要性采样比 $rho$，长幕下方差易膨胀],
+    [离轨 OIS / WIS 蒙特卡洛],
+  )),
+) <tab-mc-sample-reuse>
+
+=== 优化二：保证样本覆盖（探索机制：MCES、$epsilon$-贪心与 GLIE）
+<sec-mc-action-value>
+将 MC Basic 升级为“全后缀复用 + 逐幕增量更新（@eq-mc-q-update）”后，虽然数据效率大幅提升，但立即触发了#link(<sec-mc-vq-comparison>)[状态值与动作值对比小节]指出的#strong[探索性困境（Exploration Dilemma）]：在逐幕更新循环中，若策略 $pi$ 直接取确定性贪心策略 $pi(s) in arg max_a Q(s, a)$，则在状态 $s$ 下智能体只会不断执行当前估值最高的单一动作 $a = pi(s)$，其余动作 $a' eq.not pi(s)$ 永远没有机会被尝试，其访问计数 $N(s, a')$ 恒为 $0$、估值永久停滞在初值，导致算法极易陷入次优策略。
+
+为保证所有状态-动作对 $(s, a) in cal(S) times cal(A)$ 均能被持续采样（满足充分探索要求），同轨学习（On-Policy Learning，即生成轨迹与被评估、改进的为同一策略）发展出三种递进的探索机制（对比见 @tab-mc-exploration-comparison）：
+
+1. #strong[试探性出发蒙特卡洛（MC with Exploring Starts, MCES，又称探索性出发）]：
+   MCES 是将 MC Basic 加上“全后缀复用 + 逐幕更新”后的直接产物。为了防止漏掉某些状态-动作对，MCES 人为规定一条#strong[试探性出发假设]：每一幕交互的初始状态-动作对 $(S_0, A_0)$ 在全部 $cal(S) times cal(A)$ 上以严格大于 $0$ 的概率随机抽取；从第二步 $t = 1$ 起，智能体完全遵循当前的确定性贪心策略 $pi(s) in arg max_a Q(s, a)$ 直至本幕终止。每幕结束后，逆向遍历 $t = T - 1, dots.h, 0$ 按 @eq-mc-q-update 更新沿途的 $Q(S_t, A_t)$，并更新访问状态的贪心策略 $pi(S_t)$。
+   - #strong[局限性]：试探性出发在拥有可任意重置状态的仿真器（如棋类推演、电子游戏）中易于实现，但在真实物理环境（如机器人控制、自动驾驶，起点固定或由物理规律决定）中根本无法人为强制指定任意初始状态；此外，在一般随机环境下 MCES 能否保证收敛于 $q_star$ 迄今尚无完整数学证明（Sutton & Barto 第 2 版第 5.3 节将其列为开放问题）。
+
+2. #strong[同轨策略 $epsilon$-贪心蒙特卡洛控制（On-Policy $epsilon$-Greedy MC Control）]：
+   为了彻底取消不切实际的“试探性出发”假设，只能让策略 $pi$ 在交互全过程中自身保持随机探索能力——采用 #strong[$epsilon$-软策略（$epsilon$-Soft Policy）]，即要求对任意 $s in cal(S), a in cal(A)$ 均有 $pi(a divides s) gt.eq frac(epsilon, |cal(A)|) > 0$（其中探索率 $epsilon in (0, 1]$）。
+   在给定当前动作价值估计 $Q(s, dot.op)$ 时，将全部探索概率预算 $epsilon$ 均匀分配给所有 $|cal(A)|$ 个动作，并将剩余的 $1 - epsilon$ 概率赋予当前贪心动作 $a^star in arg max_(a' in cal(A)) Q(s, a')$（若有多个动作并列最大，则按固定规则选定其一），即得到 #strong[$epsilon$-贪心策略（$epsilon$-Greedy Policy）]：
+   $
+     pi(a divides s) = cases(
+       1 - epsilon + frac(epsilon, |cal(A)|) \, & upright("若 ") a = a^star \,,
+       frac(epsilon, |cal(A)|) \, & upright("若 ") a eq.not a^star .
+     )
+   $ <eq-epsilon-greedy-policy>
+   - #strong[单调改进保证与常数 $epsilon$ 的收敛边界]：对于任意 $epsilon$-软策略 $pi$，按 @eq-epsilon-greedy-policy 关于 $q_pi$ 构造出的新 $epsilon$-贪心策略 $pi'$ 满足：
      $
-       pi(a divides s) = cases(
-         1 - epsilon + frac(epsilon, |cal(A)|) \, & upright("若 ") a = arg max_(a' in cal(A)) Q(s, a') \,,
-         frac(epsilon, |cal(A)|) \, & upright("若 ") a eq.not arg max_(a' in cal(A)) Q(s, a') .
-       )
-     $ <eq-epsilon-greedy-policy>
-     对任意 $epsilon$-软策略 $pi$，关于 $q_pi$ 的 $epsilon$-贪心策略 $pi'$ 满足 $v_(pi') (s) gt.eq v_pi (s)$（策略改进定理在 $epsilon$-软策略类中的推广，Sutton & Barto 第 5.4 节），固定 $epsilon$ 时的极限是 $epsilon$-软策略类中的最优策略，而非 $pi_star$。若探索率按#strong[无限探索且渐近贪心（GLIE，Greedy in the Limit with Infinite Exploration，如 $epsilon_k = 1 \/ k$）]条件衰减，且所有 $(s, a)$ 被无限次访问、按各 $(s, a)$ 访问次数定义的步长 $alpha_k (s, a)$ 满足 Robbins-Monro 条件（@eq-rm-step-conditions），则同轨表格型 $epsilon$-软 MC 控制的 $Q$ 以概率 $1$ 收敛于 $q_star$；@eq-mc-q-update 取常步长 $alpha$ 时不满足 $sum alpha_k^2 < oo$，不在此结论之内。
+       q_pi (s, pi'(s)) = sum_(a in cal(A)) pi'(a divides s) q_pi (s, a) = frac(epsilon, |cal(A)|) sum_(a in cal(A)) q_pi (s, a) + (1 - epsilon) max_(a in cal(A)) q_pi (s, a) gt.eq v_pi (s) ,
+     $
+     由策略改进定理在 $epsilon$-软策略类中的推广（Sutton & Barto 第 2 版第 5.4 节），依然严格保证单调改进 $v_(pi') (s) gt.eq v_pi (s)$。只要环境状态互通，由于每个动作都有至少 $epsilon \/ |cal(A)|$ 的正概率被选中，无需试探性出发即可保证所有可从起点到达的 $(s, a)$ 被无限次访问。然而，当探索率 $epsilon$ 固定为常数时，策略在任何时候都必须以 $epsilon$ 的概率盲目随机动作，因此其收敛极限只是#strong[$epsilon$-软策略类中的最优策略]，而非全局最优确定性策略 $pi_star$。
 
-3. #strong[离轨策略蒙特卡洛估计与重要性采样（Off-Policy MC via Importance Sampling）]：
-   若用具有充分探索性的#strong[行为策略（Behavior Policy）] $b(a divides s)$ 与环境交互生成轨迹，同时希望评估或优化另一个#strong[目标策略（Target Policy）] $pi(a divides s)$（满足覆盖假设：凡 $pi(a divides s) > 0$ 必有 $b(a divides s) > 0$），则直接对 $b$ 采样的回报 $G_t$ 求平均会得到 $q_b (s, a)$ 而非 $q_pi (s, a)$。
-   根据链式法则，给定 $S_t, A_t$ 后后续轨迹 $tau_(t + 1 : T) = (S_(t + 1), A_(t + 1), dots.h, S_T)$ 在目标策略 $pi$ 与行为策略 $b$ 下的条件概率之比中，#strong[未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$ 在分子分母中完全约消]，从而得到完全不依赖环境模型的#strong[重要性采样比（Importance Sampling Ratio）]：
+3. #strong[无限探索且渐近贪心（GLIE 条件）与渐近最优收敛]：
+   若要在不依赖试探性出发的前提下最终收敛到全局最优确定性策略 $pi_star$ 与最优动作价值 $q_star$，必须在初期保持充分探索，同时让探索率随幕数 $k$ 的增加缓慢衰减至 $0$。这一思想被严格表述为 #strong[GLIE 条件（Greedy in the Limit with Infinite Exploration）]：
+   - #strong[无限探索（Infinite Exploration）]：所有状态-动作对 $(s, a)$ 在交互过程中被无限次访问，即 $lim_(k arrow.r oo) N_k (s, a) = oo$；
+   - #strong[渐近贪心（Greedy in the Limit）]：当幕数 $k arrow.r oo$ 时，策略以概率 $1$ 收敛于关于动作价值的确定性贪心策略，即 $lim_(k arrow.r oo) pi_k (a divides s) = bb(1)[a = a_k^star]$。
+   典型实现是令第 $k$ 幕的 $epsilon$-贪心探索率取调和衰减序列 $epsilon_k = frac(1, k)$（或 $frac(c, k)$）。由于 $sum_(k = 1)^oo frac(1, k) = oo$，根据 Borel–Cantelli 引理的推广可保证无限次探索所有动作；同时 $lim_(k arrow.r oo) epsilon_k = 0$ 保证策略渐近变为纯贪心策略。在有限 MDP 中，若同轨 MC 控制满足 GLIE 条件，且按各 $(s, a)$ 访问次数定义的更新步长 $alpha_k (s, a)$ 满足 Robbins–Monro 条件（@eq-rm-step-conditions，如 $alpha_k (s, a) = 1 \/ N_k (s, a)$），则 $Q_k$ 以概率 $1$ 收敛于全局最优动作价值 $q_star$，策略收敛于最优策略 $pi_star$（Singh et al., 2000）。
+
+#figure(
+  caption: [同轨蒙特卡洛控制的三种探索覆盖机制对比],
+  text(size: 8.6pt, table(
+    columns: (32mm, 38mm, 34mm, 36mm, 1fr),
+    align: (left + horizon, left + horizon, left + horizon, left + horizon, left + horizon),
+    table.header([探索机制], [覆盖率来源], [对环境/交互的要求], [理论收敛极限], [工程适用性与局限]),
+    table.hline(),
+    [#strong[试探性出发] \ （MCES）],
+    [每幕起点 $(S_0, A_0)$ 均匀或正概率随机指定；后续步纯贪心],
+    [极强：要求环境支持从任意 $(s, a)$ 重置出发],
+    [目标是 $q_star, pi_star$（一般情形下尚无完整收敛证明）],
+    [仅适用于拥有状态重置接口的仿真器；物理实机不可行],
+    [#strong[固定 $epsilon$-贪心] \ （常数 $epsilon > 0$）],
+    [策略自身每步以 $epsilon$ 概率均匀随机选动作],
+    [弱：仅需正常从初始状态交互，无需重置起点],
+    [#strong[$epsilon$-软策略类中的最优策略]（次优，非 $pi_star$）],
+    [实现极简，配合常步长 $alpha$ 可持续适应非平稳环境；但永远保留 $epsilon$ 探索损耗],
+    [#strong[GLIE 衰减 $epsilon_k$-贪心] \ （如 $epsilon_k = 1 \/ k$）],
+    [探索率缓慢衰减，满足 $sum epsilon_k = oo$ 且 $epsilon_k arrow.r 0$],
+    [弱：无需试探性出发，但需极长训练幕数],
+    [#strong[全局最优 $q_star$ 与确定性最优策略 $pi_star$]（配合 RM 步长）],
+    [具备完备的渐近最优理论保证；但工程中衰减过快易早熟收敛，过慢则训练耗时极长],
+  )),
+) <tab-mc-exploration-comparison>
+
+=== 优化三：样本分布修正（离轨策略蒙特卡洛与重要性采样）
+<sec-mc-off-policy>
+同轨学习（On-Policy）之所以必须在“持续探索”与“追求确定性最优”之间左右权衡，根源在于它把#strong[探索环境的任务]与#strong[择优决策的任务]强行绑定在同一个策略上。为了彻底解开这一矛盾，或者为了直接利用历史日志、人类专家示范或其他控制器采集好的轨迹数据来评估与优化当前策略，#strong[离轨策略学习（Off-Policy Learning）]将策略一分为二：
+- #strong[行为策略（Behavior Policy，$b(a divides s)$）]：实际与环境交互、负责生成采样轨迹的策略，通常设为具有充分探索性的随机策略（如常数 $epsilon$-贪心策略或均匀随机策略）；
+- #strong[目标策略（Target Policy，$pi(a divides s)$）]：真正被评估或被优化学习的策略，在控制任务中可直接设为完全不带探索噪声的#strong[确定性贪心策略] $pi(s) in arg max_a Q(s, a)$。
+
+要使行为策略 $b$ 采出的样本能够涵盖目标策略 $pi$ 可能走到的所有分支，两者必须满足#strong[覆盖假设（Coverage Assumption）]：
+$
+  forall s in cal(S), thin a in cal(A), quad pi(a divides s) > 0 arrow.r.double b(a divides s) > 0 .
+$ <eq-coverage-assumption>
+
+==== 一、重要性采样原理与未知环境模型的完美约消
+
+由于轨迹样本是由行为策略 $b$ 生成的，若直接对观测到的回报 $G_t$ 求算术平均，由大数定律得到的是行为策略的价值 $bb(E)_b [G_t divides C]$（即 $v_b$ 或 $q_b$），而非目标策略的价值 $bb(E)_pi [G_t divides C]$。从均值近似的角度看，这是一个典型的#strong[采样分布 $P_b$ 与目标期望分布 $P_pi$ 不一致]的问题。
+
+#strong[一般随机变量的重要性采样（Importance Sampling, IS）]：设随机变量 $tau$ 在目标分布 $P_pi$ 下取值为 $P_pi (tau)$，但样本是从另一个满足覆盖假设（$P_pi (tau) > 0 arrow.r.double P_b (tau) > 0$）的提议分布 $P_b$ 中抽取的。欲利用 $P_b$ 下的样本无偏估计目标期望 $bb(E)_pi [f(tau)] = sum_tau P_pi (tau) f(tau)$，只需在求和式中乘以并除以 $P_b (tau)$：
+$
+  bb(E)_pi [f(tau)] = sum_tau P_pi (tau) f(tau) = sum_tau P_b (tau) underbrace(#mhl($frac(P_pi (tau), P_b (tau))$), "重要性采样比 " rho(tau)) f(tau) = bb(E)_b [#mhl($rho(tau)$) f(tau)] .
+$ <eq-general-importance-sampling>
+@eq-general-importance-sampling 表明：将两个分布的概率之比定义为#strong[重要性采样比（Importance Sampling Ratio）] $rho(tau) eq.dot frac(P_pi (tau), P_b (tau))$，用 $rho(tau)$ 对观测值 $f(tau)$ 进行重加权后，修正样本 $rho(tau) f(tau)$ 在行为分布 $b$ 下的数学期望就严格等于原始变量在目标分布 $pi$ 下的数学期望。
+
+#strong[MDP 子轨迹概率展开与环境转移概率约消]：将 @eq-general-importance-sampling 应用于动作价值 $q_pi (s, a) = bb(E)_pi [G_t divides S_t = s, A_t = a]$ 的估计。给定时刻 $t$ 处于状态 $S_t = s$ 且执行了动作 $A_t = a$，决定回报 $G_t$ 的后续子轨迹为 $tau_(t + 1 : T) = (R_(t + 1), S_(t + 1), A_(t + 1), dots.h, R_T, S_T)$。由马尔可夫性与条件概率乘法法则，该子轨迹在任意策略 $pi$ 下发生的条件概率为首步环境转移概率与后续各步“策略选动作 $times$ 环境转移”概率的连乘积：
+$
+  P_pi (tau_(t + 1 : T) divides S_t, A_t) = p(S_(t + 1), R_(t + 1) divides S_t, A_t) product_(k = t + 1)^(T - 1) pi(A_k divides S_k) p(S_(k + 1), R_(k + 1) divides S_k, A_k) .
+$
+当构造目标策略 $pi$ 与行为策略 $b$ 的子轨迹条件概率之比时，由于两条策略面对的是同一个环境，#strong[分子与分母中所有未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$（含 $k = t$ 的首步环境转移）逐项完全约消]：
+$
+  rho_(t + 1 : T - 1) eq.dot frac(P_pi (tau_(t + 1 : T) divides S_t, A_t), P_b (tau_(t + 1 : T) divides S_t, A_t)) = frac(cancel(p(S_(t + 1), R_(t + 1) divides S_t, A_t)) product_(k = t + 1)^(T - 1) pi(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k)), cancel(p(S_(t + 1), R_(t + 1) divides S_t, A_t)) product_(k = t + 1)^(T - 1) b(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k))) = #mhl($product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$) .
+$ <eq-importance-sampling-ratio>
+（约定当 $t = T - 1$ 时空乘积 $rho_(T : T - 1) = 1$；若估计对象为状态价值 $v_pi (s)$，因条件事件仅固定 $S_t = s$ 而未固定 $A_t$，连乘须从 $k = t$ 开始，即 @eq-mc-is-start-comparison 中的 $rho_(t : T - 1)$。）@eq-importance-sampling-ratio 揭示了一个极具价值的性质：尽管整条轨迹的概率依赖于未知的环境动态，但#strong[重要性采样比 $rho_(t + 1 : T - 1)$ 完全不依赖环境模型 $p$]，仅由智能体自己已知的两个策略分布 $pi$ 与 $b$ 决定！由 @eq-general-importance-sampling，修正后的回报样本严格满足无偏关系：
+$
+  bb(E)_b [#mhl($rho_(t + 1 : T - 1)$) #mhlg($G_t$) divides S_t = s, A_t = a] = q_pi (s, a) .
+$ <eq-is-unbiased-identity>
+
+==== 二、普通重要性采样（OIS）与加权重要性采样（WIS）
+
+设截至当前状态-动作对 $(s, a)$ 共被访问 $N(s, a)$ 次，第 $i$ 次命中样本对应的采样比与观测回报分别记为 $rho_(s, a)^((i))$ 与 $G_(s, a)^((i))$。根据对加权样本做简单算术平均还是做归一化加权平均，可构造两类离轨动作价值估计量（对比见 @tab-mc-ois-vs-wis）：
+$
+  #eqbox([$ hat(Q)_pi^upright("OIS") (s, a) eq.dot frac(1, N(s, a)) sum_(i = 1)^(N(s, a)) #mhl($rho_(s, a)^((i))$) #mhlg($G_(s, a)^((i))$), #h(2.5em) hat(Q)_pi^upright("WIS") (s, a) eq.dot frac(sum_(i = 1)^(N(s, a)) #mhl($rho_(s, a)^((i))$) #mhlg($G_(s, a)^((i))$), sum_(i = 1)^(N(s, a)) #mhl($rho_(s, a)^((i))$)) $])
+$ <eq-mc-ois-wis>
+
+- #strong[普通重要性采样（Ordinary Importance Sampling, OIS）]：左式直接以 $1 \/ N(s, a)$ 对修正样本 $rho_(s, a)^((i)) G_(s, a)^((i))$ 求算术平均。由 @eq-is-unbiased-identity，OIS 在首次访问协议下#strong[严格无偏]；但因为 $rho_(t + 1 : T - 1)$ 是 $T - t - 1$ 步概率比的连乘积，只要部分步骤上比值 $pi(A_k divides S_k) \/ b(A_k divides S_k) > 1$（例如行为策略以 $0.1$ 的小概率碰巧选到了目标策略概率为 $1$ 的贪心动作，单步比值即为 $10$，连续 $k$ 步即为 $10^k$），采样比就会随轨迹长度呈指数级暴涨，导致 OIS 估计量的方差极大，在包含环路的分幕任务中方差甚至可能发散至无穷大。
+- #strong[加权重要性采样（Weighted Importance Sampling, WIS）]：右式将分母从样本个数 $N(s, a)$ 替换为采样比的累加和 $sum_(i = 1)^(N(s, a)) rho_(s, a)^((i))$（约定分母为 $0$ 时保持初值不变），即把每个样本 $G_(s, a)^((i))$ 的相对权重归一化为 $w_i = frac(rho_(s, a)^((i)), sum_j rho_(s, a)^((j))) in [0, 1]$。例如当仅采到 $N = 1$ 个非零权重样本时，无论 $rho^((1))$ 高达 $1000$ 还是低至 $0.01$，OIS 会将回报放大 $1000$ 倍或缩小为 $1%$，而 WIS 中分子分母的 $rho^((1))$ 直接约消，给出完全合理的单样本估计 $hat(Q)^upright("WIS") = G^((1))$！由于分子与分母同含随机变量 $rho$，WIS 作为比率估计量在有限样本下有偏（单样本时偏差即为 $q_b - q_pi$），但随着 $N(s, a) arrow.r oo$，分子除以 $N$ 与分母除以 $N$ 分别由大数定律收敛于 $q_pi (s, a)$ 与 $1$，故偏差渐近趋于 $0$（一致收敛）；同时因所有归一化权重均在 $[0, 1]$ 之间，只要单幕回报有界 $|G_t| lt.eq G_max$，WIS 的估值就恒被严格限制在 $[-G_max, G_max]$ 内，#strong[方差恒有界且远低于 OIS]。因此在实际工程与离轨控制中，几乎总是采用加权重要性采样（WIS）。
+
+#figure(
+  caption: [普通重要性采样（OIS）与加权重要性采样（WIS）的统计特性对比],
+  text(size: 8.6pt, table(
+    columns: (28mm, 1fr, 1fr),
+    align: (left + horizon, left + horizon, left + horizon),
+    table.header([对比维度], [普通重要性采样（OIS）], [加权重要性采样（WIS）]),
+    table.hline(),
+    [估计量定义], [算术平均：$frac(1, N) sum_(i = 1)^N rho^((i)) G^((i))$], [归一化加权平均：$frac(sum_(i = 1)^N rho^((i)) G^((i)), sum_(i = 1)^N rho^((i)))$],
+    [单样本（$N = 1$）表现], [$hat(Q) = rho^((1)) G^((1))$（受极端采样比剧烈扭曲）], [$hat(Q) = G^((1))$（分子分母 $rho^((1))$ 约消，等于真实观测回报）],
+    [有限样本偏差], [#strong[无偏]（首次访问协议下）], [#strong[有偏]，但偏差以 $O(1 \/ N)$ 衰减，满足渐近无偏与一致收敛],
+    [方差特性], [极高，长幕或存在环路时方差可能#strong[无界（$oo$）]], [权重归一化至 $[0, 1]$，回报有界时#strong[方差恒有界]且显著更小],
+    [工程采用建议], [主要用于理论分析或极短幕任务，工程实践中极少直接采用], [#strong[离轨蒙特卡洛评估与控制的标准首选方案]],
+  )),
+) <tab-mc-ois-vs-wis>
+
+==== 三、WIS 的增量更新公式与离轨蒙特卡洛控制流程
+
+1. #strong[WIS 的 $O(1)$ 增量更新递推式]：
+   将#link(<sec-mc-averaging>)[平均方式小节]的增量思想推广到加权平均：对每个状态-动作对 $(s, a)$，维护当前动作价值估计 $Q(s, a)$ 与截至当前的累积重要性权重和 $C(s, a) eq.dot sum_(i = 1)^n W_i$（初值 $C(s, a) = 0$）。每当一幕轨迹在时刻 $t$ 为 $(S_t, A_t)$ 产生新的回报样本 $G_t$ 与重要性采样比 $W eq.dot rho_(t + 1 : T - 1)$（若 $W = 0$ 则该样本对加权和无贡献，可直接跳过）时，先累加权重和 $C(S_t, A_t) arrow.l C(S_t, A_t) + W$，再执行增量更新：
    $
-     rho_(t + 1 : T - 1) eq.dot frac(product_(k = t + 1)^(T - 1) pi(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k)), product_(k = t + 1)^(T - 1) b(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k))) = #mhl($product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$) .
-   $ <eq-importance-sampling-ratio>
-   利用修正后的无偏回报样本 $rho_(t + 1 : T - 1) G_t$（满足 $bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t = s, A_t = a] = q_pi (s, a)$），可构造#strong[普通重要性采样（Ordinary IS，无偏但方差可能无界）]与#strong[加权重要性采样（Weighted IS，有偏但偏差随样本数增加趋于零；回报有界时方差有界）]两类动作价值估计量：
-   $
-     hat(Q)_pi^upright("OIS") (s, a) = frac(1, N(s, a)) sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), #h(2.5em) hat(Q)_pi^upright("WIS") (s, a) = frac(sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$)) .
-   $ <eq-mc-ois-wis>
+     #eqbox([$ C(S_t, A_t) arrow.l C(S_t, A_t) + #mhl($W$), #h(2.5em) Q(S_t, A_t) arrow.l Q(S_t, A_t) + #mhl($frac(W, C(S_t, A_t))$) [#mhlg($G_t$) - Q(S_t, A_t)] $])
+   $ <eq-wis-incremental-update>
+   对 @eq-wis-incremental-update 展开归纳即可验证，它在代数上与 @eq-mc-ois-wis 右端的批量 WIS 公式完全等价，且仅需 $O(1)$ 存储开销。
+
+2. #strong[离轨蒙特卡洛控制（Off-Policy MC Control）与非贪心动作回溯截断]：
+   在离轨 MC 控制中，目标策略 $pi$ 直接设为关于当前 $Q$ 的确定性贪心策略 $pi(s) in arg max_a Q(s, a)$（并列最大时按固定一致规则打破平局），而行为策略 $b$ 设为任意满足覆盖假设的软策略（如 $epsilon$-贪心策略）。每一幕控制循环按以下步骤执行：
+   - #strong[步骤 1（行为策略采样）]：遵循行为策略 $b$ 与环境交互生成完整一幕轨迹 $(S_0, A_0, R_1, dots.h, S_(T - 1), A_(T - 1), R_T)$，初始化回报 $G arrow.l 0$ 与重要性采样权重 $W arrow.l 1$。
+   - #strong[步骤 2（逆向递推与 WIS 更新）]：对时刻 $t = T - 1, T - 2, dots.h, 0$ 依次逆向回溯：先更新回报 $G arrow.l R_(t + 1) + gamma G$，再以当前权重 $W$ 按 @eq-wis-incremental-update 更新 $C(S_t, A_t)$ 与 $Q(S_t, A_t)$，并随即将状态 $S_t$ 的目标策略更新为最新贪心动作 $pi(S_t) arrow.l arg max_a Q(S_t, a)$。
+   - #strong[步骤 3（回溯截断或权重累乘）]：检查时刻 $t$ 行为策略实际执行的动作 $A_t$ 是否与刚刚更新后的目标贪心动作 $pi(S_t)$ 一致：
+     - 若 $A_t eq.not pi(S_t)$：由于确定性目标策略满足 $pi(A_t divides S_t) = 0$，从时刻 $t - 1$ 往前的所有时刻 $t' < t$ 其重要性采样比 $rho_(t' + 1 : T - 1)$ 中都必然包含因子 $pi(A_t divides S_t) = 0$，导致前序所有权重恒为 $0$。因此#strong[立即跳出本幕回溯循环，开始下一幕采样]；
+     - 若 $A_t = pi(S_t)$：此时 $pi(A_t divides S_t) = 1$，将重要性权重更新为 $W arrow.l W dot.op frac(1, b(A_t divides S_t))$，继续向 $t - 1$ 回溯。
+   这一“遇到非贪心动作即截断回溯”的机制直观地说明：离轨蒙特卡洛控制只能利用每一幕轨迹末端#strong[恰巧与目标贪心策略全部吻合的那一段后缀]来更新价值；当轨迹很长且行为策略探索较多时，有效回溯深度往往较短，这正是下一节引入单步时序差分控制（如 Q-Learning，无需长轨迹连乘重要性采样即可离轨学习）的核心动因。
+
+=== 方法总览、选型决策与常见误区辨析
+<sec-mc-summary>
+将本节讨论的全部蒙特卡洛价值估计与控制方法按“估计对象、样本复用协议、平均更新方式、探索覆盖机制、数据来源与分布修正”五个维度进行横向汇总，可得 @tab-mc-methods-summary。
+
+#figure(
+  caption: [蒙特卡洛价值估计与控制算法谱系总览（方法 $times$ 均值近似选择维度）],
+  text(size: 8.4pt, table(
+    columns: (28mm, 14mm, 24mm, 24mm, 26mm, 26mm, 1fr),
+    align: (left + horizon, center + horizon, left + horizon, left + horizon, left + horizon, left + horizon, left + horizon),
+    table.header([算法名称], [对象], [样本利用方式], [平均/更新方式], [探索覆盖机制], [数据来源与修正], [核心定位与收敛结论]),
+    table.hline(),
+    [#strong[MC Basic] \ （教学基线）],
+    [$q_pi$],
+    [仅用轨迹起点 $(S_0, A_0)$ 的总回报 $G_0$],
+    [批量算术平均 \ $frac(1, n) sum G^((i))$],
+    [人为遍历指定每个 $(s, a)$ 为起点],
+    [同轨（$b = pi$），无分布偏差],
+    [无模型策略迭代的最朴素基线；样本效率最低],
+    [#strong[首次访问 MC] \ （First-Visit）],
+    [$v_pi$ \ 或 $q_pi$],
+    [全后缀复用，每幕仅计入首次访问时刻],
+    [批量平均或等价增量 $1 \/ N$],
+    [评估 $v_pi$ 无需探索动作；估 $q_pi$ 需软策略],
+    [同轨（$b = pi$），无分布偏差],
+    [标准策略评估：有限样本#strong[条件无偏]，$N arrow.r oo$ 时以概率 $1$ 收敛],
+    [#strong[每次访问 MC] \ （Every-Visit）],
+    [$v_pi$ \ 或 $q_pi$],
+    [全后缀复用，同幕内全部访问时刻均计入],
+    [增量更新 $1 \/ N$ 或常步长 $alpha$],
+    [同上],
+    [同轨（$b = pi$），无分布偏差],
+    [标准策略评估：有限样本有偏但#strong[渐近无偏]，免去重判断，小样本 MSE 常更低],
+    [#strong[试探性出发 MC] \ （MCES）],
+    [$q_pi arrow.r q_star$],
+    [全后缀复用 + 逐幕在线 GPI 更新],
+    [增量更新 $1 \/ N$ 或常步长 $alpha$],
+    [随机起点 $(S_0, A_0)$ + 后续确定性贪心],
+    [同轨（$b = pi$），无分布偏差],
+    [仅适用于可任意指定起点的仿真器；一般收敛性尚无完整证明],
+    [#strong[同轨 $epsilon$-贪心 MC] \ （On-Policy）],
+    [$q_pi arrow.r q_star$],
+    [全后缀复用 + 逐幕在线 GPI 更新],
+    [增量更新 $1 \/ N$ 或常步长 $alpha$],
+    [$epsilon$-软策略；或按 GLIE 条件衰减 $epsilon_k arrow.r 0$],
+    [同轨（$b = pi$），无分布偏差],
+    [固定 $epsilon$ 收敛于 $epsilon$-软策略最优；#strong[GLIE + RM 步长]收敛于全局最优 $q_star$],
+    [#strong[离轨重要性采样 MC] \ （Off-Policy IS）],
+    [$v_pi, q_pi$ \ 或 $q_star$],
+    [全后缀复用（控制时遇非贪心动作截断回溯）],
+    [OIS 算术平均；#strong[WIS 增量加权更新]],
+    [由行为策略 $b$（如 $epsilon$-软）保证覆盖假设],
+    [离轨（$b eq.not pi$），乘重要性采样比 $rho$],
+    [解耦探索与优化，可直接学确定性贪心策略 $pi_star$；WIS 渐近无偏且方差有界],
+  )),
+) <tab-mc-methods-summary>
+
+==== 一、实际任务中的蒙特卡洛算法选型指南
+
+面对具体的强化学习问题，可按以下三个递进问题快速确定最合适的蒙特卡洛方案：
+1. #strong[任务目标是“仅评估给定策略”还是“寻找最优控制策略”？]
+   - 若仅需评估给定策略的表现（Policy Evaluation），优先选择估计#strong[状态价值 $V(s)$]（每次访问型或首次访问型增量 MC），其表项规模仅为 $|cal(S)|$，且不要求策略遍历所有动作、估计方差更低。
+   - 若需要在未知环境模型下改进策略（Model-Free Control），则#strong[必须估计动作价值 $Q(s, a)$]，以便直接通过 $arg max_a Q(s, a)$ 选出贪心动作。
+2. #strong[轨迹样本是否由当前被评估/优化的同一个策略实时生成？]
+   - 若智能体自采自用（On-Policy），且物理环境无法任意指定初始状态，应选用#strong[同轨 $epsilon$-贪心 MC 控制]（追求理论渐近最优则按 GLIE 衰减 $epsilon_k$，追求持续适应能力则保留小常数 $epsilon$）。
+   - 若希望在保持充分探索的同时直接学习确定性最优策略 $pi_star$，或需要复用历史离线日志、他策示范数据（Off-Policy），应选用#strong[基于加权重要性采样（WIS）的离轨 MC 算法]（@eq-wis-incremental-update）。
+3. #strong[被估价值的回报分布是否平稳？]
+   - 在固定策略评估中，回报分布平稳，选用衰减步长 $alpha_N = 1 \/ N$ 可获得与批量样本均值严格等价的无偏/渐近无偏估计。
+   - 在边评估边改进策略的控制过程中，策略持续变化导致回报分布非平稳，工程上优先选用#strong[常步长 $alpha in (0, 1]$] 以指数加权遗忘早期旧策略产生的过时样本。
+
+==== 二、本科生学习中的四个常见误区辨析
+
+1. #strong[误区一：“既然每次访问时刻都有 $bb(E)[G_t divides S_t = s] = v_pi (s)$，那么每次访问型 MC 在有限样本下也是无偏估计。”]
+   - #strong[辨析]：期望的线性性只在样本个数固定时保证算术平均无偏。在每次访问型 MC 中，同一幕内状态 $s$ 被重复访问的次数本身是随机变量，且与该幕的轨迹长度及回报高低存在统计耦合，同时同一幕内多次访问的回报共享后续奖励而彼此相关，导致比率估计量 $hat(V)_pi^upright("EV") (s)$ 在有限幕下有偏；只有当采样幕数趋于无穷时，跨幕独立性才使偏差以 $O(1 \/ N(s))$ 衰减至零（渐近无偏）。
+2. #strong[误区二：“状态价值 MC 评估不需要探索所有动作，因此可以直接拿任意行为策略 $b$ 采出的轨迹求算术平均来估计 $v_pi (s)$。”]
+   - #strong[辨析]：这是把“访问覆盖要求”与“采样分布一致性”混为一谈。状态价值评估确实不需要在每个状态试遍所有动作，但轨迹中每一步选什么动作直接决定了状态转移走向与后续奖励分布。若不乘重要性采样比 $rho_(t : T - 1)$ 而直接对行为策略 $b$ 的轨迹回报求平均，大数定律保证其收敛到的是行为策略自身的价值 $v_b (s)$，而非目标策略的 $v_pi (s)$。只要 $b eq.not pi$，无论估 $V$ 还是估 $Q$ 都必须做重要性采样修正。
+3. #strong[误区三：“状态访问计数恒等于各动作访问计数之和 $N(s) = sum_(a in cal(A)) N(s, a)$ 在所有 MC 协议下都成立。”]
+   - #strong[辨析]：该恒等式#strong[仅在每次访问（Every-Visit）计数协议下成立]。在首次访问（First-Visit）协议下，$N(s)$ 统计的是“访问过状态 $s$ 的幕数”，而 $N(s, a)$ 统计的是“访问过状态-动作对 $(s, a)$ 的幕数”；同一幕轨迹完全可以先经过 $(s, a_1)$、稍后再次回到 $s$ 并执行 $(s, a_2)$，此时该幕对 $N(s)$ 仅贡献 $1$ 次计数，却对 $sum_a N(s, a)$ 贡献了 $2$ 次计数，故首次访问协议下一般有 $sum_(a in cal(A)) N(s, a) gt.eq N(s) gt.eq N(s, a)$。
+4. #strong[误区四：“常步长更新 $hat(z) arrow.l hat(z) + alpha (G - hat(z))$ 只是把 $1 \/ N$ 换成了常数，随着样本无穷多也能以概率 $1$ 收敛到真值。”]
+   - #strong[辨析]：由#link(<thm-6.1>)[定理 6.1]（Robbins–Monro 定理）及误差递推式 @eq-rm-error-recursion，每一步采样噪声向估计误差注入的方差项为 $alpha_k^2 sigma^2$。常步长 $alpha > 0$ 不满足第二条件 $sum_(k = 1)^oo alpha_k^2 < oo$，最新到达的样本永远保有固定权重 $alpha$，单次采样的随机涨落永远不会被完全抹平，因此估值只能在真值邻域内持续振荡，是用“放弃严格渐近收敛”换取“对非平稳分布的持续追踪能力”。
 
 #divider()
 
@@ -1738,7 +2170,7 @@ $
   caption: [强化学习算法关联谱系：左框为预测 / 评估类算法（对应贝尔曼期望方程），右框为控制类算法（对应贝尔曼最优方程或 GPI 外环）；中列三类期望估计方法分别作用于显式展开式（DP）、价值定义（MC，不经贝尔曼方程）与条件期望式（TD），最下行为函数近似延伸。右下节点按价值式控制谱系归类，DDPG / TD3 / SAC 的 Critic 求解的是（软）期望方程],
 ) <fig-rl-genealogy>
 
-图中未列出两类状态价值算法：纯 $V$ 的蒙特卡洛控制在无模型时无法选取贪心动作（#link(<sec-mc-state-value>)[第 6.3.1 节]第 3 项）；无模型最优控制通常不对 $v_star$ 做采样自举而直接估计 $q_star$，结构原因见 @eq-max-expectation-order 及其后说明。
+图中未列出两类状态价值算法：纯 $V$ 的蒙特卡洛控制在无模型时无法选取贪心动作（见#link(<sec-mc-vq-comparison>)[第 6.3 节「状态价值与动作价值」小节]）；无模型最优控制通常不对 $v_star$ 做采样自举而直接估计 $q_star$，结构原因见 @eq-max-expectation-order 及其后说明。
 
 #divider()
 
