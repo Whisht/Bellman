@@ -1,14 +1,16 @@
-.planning/
-.tmp/
-*.mhtml
-*.json
-typst
-Guidelines.md
-bellman-*.md
-.DS_Store
-*.pdf
-.tmp/
-.planning/
-.audit/
-CLAUDE.md
-DESIGN.md
+# 白名单：仓库只跟踪下面显式列出的条目，其余一律忽略。
+# 需要提交新文件时，在对应位置补一条 ! 规则（例如 !/LICENSE）。
+/*
+!/.gitignore
+!/README.md
+!/main.typ
+
+# CI：编译 main.typ、在 tag 上发布 bellman-notes.pdf
+!/.github/
+/.github/*
+!/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/typst.yml
+
+# 被忽略的本地文件（bellman-notes.pdf、CLAUDE.md、AGENTS.md 等）不会进仓库，
+# 新建 worktree 时可在 “Copy ignored files” 里勾选带入。
