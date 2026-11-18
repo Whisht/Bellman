@@ -1907,52 +1907,23 @@ $ <eq-mc-ois-wis>
 
 == 核心扩展一 · 离轨策略评估与重要性采样（分布错配修正）
 <sec-importance-sampling>
-前述两类路线均默认轨迹样本由待评估的目标策略 $pi$ 生成（同轨学习）。然而在实际控制算法中，为了兼顾探索与利用，常需采用富于探索性的策略采集交互数据，同时评估或优化另一个更为贪心的目标策略——这构成了所有离轨（Off-Policy）方法的基本范式。此时，样本服从行为策略诱导的轨迹分布而非目标策略分布，存在着#strong[采样分布错配（Distribution Mismatch）]。本节系统阐述离轨策略评估的理论前提、似然比修正机制、方差特性，以及#strong[无需引入重要性采样的判定准则]。
+前述两类路线均默认轨迹样本由待评估的目标策略 $pi$ 生成（同轨学习）。然而在实际控制算法中，为了兼顾探索与利用，常需采用富于探索性的策略采集交互数据，同时评估或优化另一个更为贪心的目标策略——这构成了所有离轨（Off-Policy）方法的基本范式。此时，样本服从行为策略诱导的轨迹分布而非目标策略分布，存在着#strong[采样分布错配（Distribution Mismatch）]。#link(<sec-mc-off-policy>)[第 6.3 节优化三]已给出离轨评估的一阶修正机制（覆盖性假设、轨迹似然比中环境转移概率的代数约消，以及 OIS / WIS 两类估计量的构造）；本节进一步讨论连乘似然比导致的#strong[方差链式累积机理]（逐决策重要性采样，Per-Decision IS）、#strong[无需引入重要性采样的结构判据]，以及重要性采样机制与贝尔曼方程之间的关系。
 
-1. #strong[问题症结与覆盖性假设]：
-   设交互轨迹样本由#strong[行为策略（Behavior Policy）] $b(a divides s)$ 生成，而待估计的目标量为#strong[目标策略（Target Policy）] $pi(a divides s)$ 下的动作价值 $q_pi (s, a)$（或状态价值 $v_pi (s)$）。若直接对行为策略 $b$ 采样的回报求经验平均，估计量将收敛于 $q_b (s, a) eq.dot bb(E)_b [G_t divides S_t = s, A_t = a]$，与目标价值 $q_pi (s, a)$ 存在系统性偏差。
-   消除该分布偏差的充要前提是满足#strong[覆盖性假设（Coverage Assumption）]（亦称绝对连续性条件）：
-   $
-     pi(a divides s) > 0 ⟹ b(a divides s) > 0, #h(1.5em) forall s in cal(S), a in cal(A) .
-   $ <eq-is-coverage>
-   即凡是目标策略 $pi$ 赋予正概率的动作，行为策略 $b$ 亦必须以正概率探索。若在某状态-动作对上 $pi(a divides s) > 0$ 而 $b(a divides s) = 0$，则该分支的样本在采样分布下的支撑集缺失，任何重加权手段均无法恢复其期望信息。
-
-2. #strong[修正机制：轨迹似然比与环境转移概率的代数约消]：
-   注意行为策略 $b$ 与目标策略 $pi$ 的差异仅体现在#strong[策略层的动作采样概率]上，而底层的#strong[环境状态转移规律 $p(s', r divides s, a)$ 完全相同]。给定 $(S_t = s, A_t = a)$ 后，将后续子轨迹 $tau_(t + 1 : T) = (S_(t + 1), A_(t + 1), dots.h, S_T)$ 在目标策略 $pi$ 与行为策略 $b$ 下的条件概率相除，按乘法链式法则展开后，#strong[未知的环境转移概率 $p(S_(k + 1), R_(k + 1) divides S_k, A_k)$ 在分子与分母中完全约消]，所得相对似然比仅由已知的策略概率之比构成：
-   $
-     rho_(t + 1 : T - 1) eq.dot frac(product_(k = t + 1)^(T - 1) pi(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k)), product_(k = t + 1)^(T - 1) b(A_k divides S_k) cancel(p(S_(k + 1), R_(k + 1) divides S_k, A_k))) = #mhl($product_(k = t + 1)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$) .
-   $ <eq-importance-sampling-ratio>
-   该比值称为#strong[重要性采样比（Importance Sampling Ratio）]，由于不依赖于未知的环境动力学模型 $p$，可直接用于无模型离轨评估。对动作价值 $q_pi (s, a)$，因时刻 $t$ 的动作 $A_t = a$ 已由条件固定，似然比从 $k = t + 1$ 开始累乘，满足无偏测度变换恒等式 $bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t = s, A_t = a] = bb(E)_pi [G_t divides S_t = s, A_t = a] = q_pi (s, a)$。
-   #strong[注（状态价值 $v_pi (s)$ 与动作价值 $q_pi (s, a)$ 的似然比下标区分）]：若待评估的对象是#strong[状态价值 $v_pi (s)$]，由于在条件 ${S_t = s}$ 下当前时刻动作 $A_t$ 并未固定、亦由策略采样产生，故重要性采样比必须从时刻 $t$ 开始累乘，记为 $rho_(t : T - 1) eq.dot product_(k = t)^(T - 1) frac(pi(A_k divides S_k), b(A_k divides S_k))$，此时有 $bb(E)_b [rho_(t : T - 1) G_t divides S_t = s] = v_pi (s)$。
-
-3. #strong[估计量构造：普通重要性采样（OIS）与加权重要性采样（WIS）]：
-   设在状态-动作对 $(s, a)$ 上共采集到 $N(s, a)$ 个轨迹回报样本 ${G_((i))}$ 及对应的似然比 ${rho_((i))}$，可构造两类离轨估计量：
-   $
-     hat(Q)_pi^upright("OIS") (s, a) = frac(1, N(s, a)) sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), #h(2.5em) hat(Q)_pi^upright("WIS") (s, a) = frac(sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$) #mhlg($G_((i))$), sum_(i = 1)^(N(s, a)) #mhl($rho_((i))$)) .
-   $ <eq-mc-ois-wis>
-   - #strong[普通重要性采样（Ordinary IS, OIS）]：$hat(Q)_pi^upright("OIS") (s, a)$ 对任意样本量均满足 $bb(E)_b [hat(Q)_pi^upright("OIS") (s, a)] = q_pi (s, a)$，是严格#strong[无偏估计量]；但由于分母为确定性样本数 $N(s, a)$，当连乘权重 $rho_((i))$ 出现极端值时，估计量方差可能急剧膨胀甚至无界。
-   - #strong[加权重要性采样（Weighted IS, WIS）]：$hat(Q)_pi^upright("WIS") (s, a)$ 以随机权重之和 $sum_i rho_((i))$ 作为归一化分母，构成各样本回报的凸组合（当回报有界时，估计值严格落在 $[min_i G_((i)), max_i G_((i))]$ 区间内），方差显著更低且恒有界。由于分母是随机变量，WIS 在有限样本下存在 $O(1 \/ N)$ 量级的偏差，但随 $N arrow.r oo$ 偏差渐近趋于零（渐近无偏，Consistent）。工程实践中通常优先采用 WIS。
-   WIS 亦可写为增量递推形式：令累积权重 $W_(n + 1) = W_n + rho_(n + 1)$，则有
-   $
-     Q_(n + 1) = Q_n + frac(rho_(n + 1), W_(n + 1)) [G_(n + 1) - Q_n] .
-   $ <eq-mc-wis-incremental>
-   对照 @eq-ch6-update-shell 可见，上式依然遵循通用增量更新形式 $x arrow.l x + alpha_k (y_k - x)$，其等效步长 $alpha_k = rho_k \/ W_k$ 是由样本似然比自适应决定的归一化权重（当同轨 $rho_k equiv 1$ 时即退化为 @eq-incremental-mean 中的等权步长 $1 \/ N$）。
-
-4. #strong[方差的链式累积机理与逐决策重要性采样（Per-Decision IS）]：
+1. #strong[方差的链式累积机理与逐决策重要性采样（Per-Decision IS）]：
    重要性采样比 $rho_(t + 1 : T - 1)$ 是沿时间步的连乘积，这是导致离轨多步估计方差随步数指数级增长的根本原因。将完整回报 $G_t = sum_(k = t + 1)^T gamma^(k - t - 1) R_k$ 展开后，对第 $k$ 步的即时奖励 $R_k$ 而言，由#strong[时序因果性]与#link(<lem-2>)[引理 2] 的条件期望塔性质，发生在时刻 $k$ 之后的似然比因子 $frac(pi(A_(k') divides S_(k')), b(A_(k') divides S_(k')))$（$k' gt.eq k$）在给定历史轨迹 $(S_t, A_t, dots.h, S_k, R_k)$ 下的条件期望恒等于 $1$（因 $sum_a b(a divides S_(k')) frac(pi(a divides S_(k')), b(a divides S_(k')) ) = sum_a pi(a divides S_(k')) = 1$）。因此，后置似然比因子可从期望中精确消去，仅需保留时刻 $k$ 之前的前缀乘积 $rho_(t + 1 : k - 1)$：
    $
      bb(E)_b [rho_(t + 1 : T - 1) G_t divides S_t, A_t] = bb(E)_b [sum_(k = t + 1)^T gamma^(k - t - 1) #mhl($rho_(t + 1 : k - 1)$) R_k divides S_t, A_t] .
    $ <eq-per-decision-is>
    上式称为#strong[逐决策重要性采样（Per-Decision IS）]。它表明：时间步越靠后的奖励项 $R_k$，所乘的前缀似然比因子个数越多，引入的方差贡献也越大。综上所述，离轨估计的高方差主要源于两个因素：一是目标策略 $pi$ 与行为策略 $b$ 的分布偏离程度，二是连乘所跨越的有效时间步长。针对多步连乘方差失控的截断修正方案将在#link(<sec-offpolicy-multistep>)[第 6.7 节]详细讨论。
 
-5. #strong[无需重要性采样的结构判据]：
+2. #strong[无需重要性采样的结构判据]：
    并非所有离轨算法均需引入重要性采样比。似然比 $rho$ 的作用是修正#strong[策略层关于动作分布的期望]。若算法所构造的自举目标值 $y_k$ 本身不包含关于目标策略分布的采样期望，则无需乘以似然比。最具代表性的情形是基于#strong[贝尔曼最优方程]的单步自举目标（如 Q-Learning，见#link(<sec-td-action-value>)[第 6.6 节]）：
    $
      y_k = R_(k + 1) + gamma max_(a' in cal(A)) Q(S_(k + 1), a') .
    $ <eq-max-target-no-is>
    在给定当前状态-动作对 $(S_k = s, A_k = a)$ 的条件下，单步转移 $(R_(k + 1), S_(k + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境动力学决定，与行为策略 $b$ 无关；而后继价值项 $max_(a') Q(S_(k + 1), a')$ 直接对动作空间取确定性最大值（同理，Expected SARSA 直接按已知分布 $sum_(a') pi(a' divides S_(k + 1)) Q(S_(k + 1), a')$ 显式求和），并未依赖从策略中采样出的后继动作 $A_(k + 1)$。在此情形下，行为策略 $b$ 仅需满足持续探索条件以确保所有 $(s, a)$ 被充分访问，无需重要性采样校正。反之，#strong[凡是更新目标中包含需通过轨迹动作采样来近似的策略期望（如离轨 SARSA 或多步离轨回报），且采样策略 $b$ 异于目标策略 $pi$ 时，均必须引入重要性采样加权。]
 
-6. #strong[与贝尔曼方程的理论关系]：
+3. #strong[与贝尔曼方程的理论关系]：
    重要性采样机制#strong[并未改变底层的贝尔曼期望方程本身]。无论是状态价值方程 $v_pi (s) = bb(E)_pi [R_(t + 1) + gamma v_pi (S_(t + 1)) divides S_t = s]$（@eq-bellman-exp-vv，全轨迹展开对应乘以 $rho_(t : T - 1)$）还是动作价值方程 $q_pi (s, a) = bb(E)_pi [R_(t + 1) + gamma q_pi (S_(t + 1), A_(t + 1)) divides S_t = s, A_t = a]$（@eq-bellman-exp-qq，对应乘以 $rho_(t + 1 : T - 1)$），算子的不动点始终严格保持为 $v_pi$ 与 $q_pi$；重要性采样仅在统计估计层面对样本赋予似然比权重，以完成从行为分布 $b$ 到目标分布 $pi$ 的测度变换。
 
 #divider()
@@ -2047,7 +2018,7 @@ $ <eq-mc-ois-wis>
      q_star (s, a) & = #mhlb($bb(E)_(R_(t + 1), S_(t + 1))$) [R_(t + 1) + gamma #mhl($max_(a' in cal(A))$) #mhlg($q_star (S_(t + 1), a')$) divides S_t = s, A_t = a] .
    $ <eq-max-expectation-order>
    - 在 $v_star$ 的方程中 $max_a$ 位于条件期望之外。若直接对单次采样回报取最大，将把期望算子与最大化算子非法交换，引入严重的正向偏差；此外，即使已知 $v_star$，从 $v_star$ 提取贪心动作仍需已知一步环境转移模型。因此，无模型最优控制必须以动作价值 $q_star$ 为估计对象。
-   - 在 $q_star$ 的方程中条件期望位于最外层，对给定的采样后继状态 $S_(t + 1) = s'$，$max_(a') Q(s', a')$ 仅需在动作空间上做确定性最大化。给定 $(S_t = s, A_t = a)$ 后，$(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境转移律决定，与生成轨迹的行为策略 $b$ 无关，后继动作亦无需按目标策略采样，因此 Q-Learning 无需重要性采样即可直接进行离轨控制（见#link(<sec-importance-sampling>)[第 6.4 节]第 5 项）。
+   - 在 $q_star$ 的方程中条件期望位于最外层，对给定的采样后继状态 $S_(t + 1) = s'$，$max_(a') Q(s', a')$ 仅需在动作空间上做确定性最大化。给定 $(S_t = s, A_t = a)$ 后，$(R_(t + 1), S_(t + 1)) tilde.op p(dot.op, dot.op divides s, a)$ 仅由环境转移律决定，与生成轨迹的行为策略 $b$ 无关，后继动作亦无需按目标策略采样，因此 Q-Learning 无需重要性采样即可直接进行离轨控制（见#link(<sec-importance-sampling>)[第 6.4 节]第 2 项）。
    在有限 MDP、奖励有界、行为策略 $b$ 使所有 $(s, a)$ 被无限次访问，且按各 $(s, a)$ 访问次数定义的步长满足 Robbins-Monro 条件时，表格型 $Q(s, a)$ 以概率 $1$ 收敛于最优动作价值 $q_star (s, a)$（Watkins & Dayan, 1992），对行为策略 $b$ 无 GLIE 要求。
    - #strong[方法动机与核心机制]：同轨 SARSA 的更新目标依赖含探索噪声的实际执行动作 $A_(t + 1)$，所评估的是带探索的软策略而非最优策略；Q-Learning 将策略层算子替换为贪心最大化 $max_(a')$，使更新目标直接逼近贝尔曼最优算子。
    - #strong[理论性质与所依方程]：直接对应动作价值贝尔曼最优方程 @eq-opt-cond-qq；实现了探索策略 $b$ 与目标最优策略 $pi_star$ 的解耦（天然离轨且无需重要性采样），但因对含噪估计取最大值而引入系统性高估偏差。
